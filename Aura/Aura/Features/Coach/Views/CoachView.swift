@@ -21,49 +21,60 @@ struct CoachView: View {
                     ForEach(viewModel.messages) { message in
                         messageRow(message)
                     }
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: AuraSpacing.small) {
-                            ForEach(viewModel.quickReplies, id: \.self) { reply in
-                                Button(reply) {
-                                    viewModel.draftMessage = reply
-                                }
-                                .font(AuraTypography.footnote)
-                                .foregroundStyle(AuraColors.secondary)
-                                .padding(.horizontal, AuraSpacing.medium)
-                                .padding(.vertical, AuraSpacing.small)
-                                .background(AuraColors.surfaceMuted)
-                                .clipShape(Capsule())
-                            }
-                        }
-                        .padding(.horizontal, AuraSpacing.medium)
-                    }
                 }
                 .padding(.vertical, AuraSpacing.medium)
             }
             .background(AuraColors.surface)
 
-            HStack(spacing: AuraSpacing.small) {
-                TextField("Escribe un mensaje...", text: $viewModel.draftMessage)
-                    .font(AuraTypography.body)
+            // Input Area + Quick Replies anchored at the bottom
+            VStack(spacing: AuraSpacing.medium) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AuraSpacing.small) {
+                        ForEach(viewModel.quickReplies, id: \.self) { reply in
+                            Button {
+                                viewModel.draftMessage = reply
+                            } label: {
+                                Text(reply)
+                                    .font(AuraTypography.footnote)
+                                    .foregroundStyle(AuraColors.textSecondary)
+                                    .padding(.horizontal, AuraSpacing.medium)
+                                    .padding(.vertical, AuraSpacing.small)
+                                    .background(AuraColors.surfaceMuted)
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule().stroke(AuraColors.cardStroke, lineWidth: 1)
+                                    )
+                            }
+                        }
+                    }
                     .padding(.horizontal, AuraSpacing.medium)
-                    .padding(.vertical, AuraSpacing.smedium)
-                    .background(AuraColors.surfaceMuted)
-                    .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-
-                Button {
-                    viewModel.sendDraft()
-                } label: {
-                    Image(systemName: "paperplane.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(AuraColors.primary)
-                        .clipShape(Circle())
                 }
+                .padding(.top, AuraSpacing.small)
+
+                HStack(spacing: AuraSpacing.small) {
+                    TextField("Escribe un mensaje...", text: $viewModel.draftMessage)
+                        .font(AuraTypography.body)
+                        .padding(.horizontal, AuraSpacing.medium)
+                        .padding(.vertical, 12)
+                        .background(AuraColors.surfaceMuted)
+                        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+
+                    Button {
+                        viewModel.sendDraft()
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 48, height: 48)
+                            .background(AuraColors.primary)
+                            .clipShape(Circle())
+                    }
+                }
+                .padding(.horizontal, AuraSpacing.medium)
+                .padding(.bottom, AuraSpacing.medium)
             }
-            .padding(AuraSpacing.medium)
             .background(AuraColors.surface)
+            .shadow(color: Color.black.opacity(0.04), radius: 8, y: -4)
         }
         .background(AuraColors.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)

@@ -5,7 +5,7 @@ import Combine
 final class HomeViewModel: ObservableObject {
     @Published var greeting = "Hola, Edu!"
     @Published var dateText = "15 de abril"
-    @Published var summary = "Dormiste poco anoche. Hoy vamos a enfocarnos en pequeñas acciones para mantener la energía alta."
+    @Published var summary = "Ayer fue un día exigente, pero cada nuevo amanecer es una oportunidad. Toma pequeñas pausas hoy; cuida tu energía y verás cómo logras todo lo que te propongas."
     @Published var healthStatusText = "Apple HealthKit no conectado"
     @Published var stepsToday = 0
     @Published var sleepHours = 0.0

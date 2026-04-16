@@ -66,6 +66,7 @@ struct GoalSelectionView: View {
                         .padding(.vertical, AuraSpacing.medium)
                         .background(viewModel.canContinue ? AuraColors.primary : AuraColors.textTertiary)
                         .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                        .shadow(color: viewModel.canContinue ? AuraColors.primary.opacity(0.3) : Color.clear, radius: 8, y: 4)
                 }
                 .disabled(!viewModel.canContinue)
             }
@@ -83,7 +84,7 @@ struct GoalSelectionView: View {
             viewModel.toggleGoal(goal.id)
         } label: {
             VStack(spacing: AuraSpacing.small) {
-                Image(systemName: goal.iconName)
+                Image(systemName: goal.iconName) // Already using system icons, no emojis
                     .font(.system(size: 24, weight: .medium))
                     .foregroundStyle(isSelected ? AuraColors.primary : AuraColors.textSecondary)
                 Text(goal.title)
@@ -97,9 +98,10 @@ struct GoalSelectionView: View {
             .frame(height: 112)
             .background(isSelected ? AuraColors.successSoft : AuraColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: AuraCorners.large))
+            .shadow(color: isSelected ? Color.clear : AuraColors.shadowCool, radius: 8, y: 3)
             .overlay(
                 RoundedRectangle(cornerRadius: AuraCorners.large)
-                    .stroke(isSelected ? AuraColors.primary.opacity(0.4) : AuraColors.cardStroke, lineWidth: 1)
+                    .stroke(isSelected ? AuraColors.primary.opacity(0.4) : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)

@@ -18,71 +18,100 @@ struct LoginView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AuraSpacing.xLarge) {
-                Text("AURA")
-                    .font(AuraTypography.hero)
-                    .foregroundStyle(AuraColors.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 56)
+        ZStack {
+            AuraColors.background.ignoresSafeArea()
+            
+            // Soft moonlit glow
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [AuraColors.accentMint.opacity(0.8), AuraColors.accentLavender.opacity(0.6)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 280, height: 280)
+                .blur(radius: 60)
+                .offset(y: -200)
 
-                VStack(alignment: .leading, spacing: AuraSpacing.medium) {
-                    credentialField(title: "EMAIL", placeholder: "tu@email.com", text: $email)
-                    secureCredentialField(title: "CONTRASEÑA", placeholder: "••••", text: $password)
+            ScrollView {
+                VStack(alignment: .leading, spacing: AuraSpacing.xLarge) {
+                    Text("Aura")
+                        .font(AuraTypography.hero)
+                        .foregroundStyle(AuraColors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 80)
+                        // Add slight shadow to stand out against glow
+                        .shadow(color: AuraColors.surface.opacity(0.5), radius: 2)
 
-                    Button("¿Olvidaste tu contraseña?") {}
-                        .font(AuraTypography.footnote)
-                        .foregroundStyle(AuraColors.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .padding(.horizontal, AuraSpacing.small)
+                    VStack(alignment: .leading, spacing: AuraSpacing.medium) {
+                        credentialField(title: "Email", placeholder: "tu@email.com", text: $email)
+                        secureCredentialField(title: "Contraseña", placeholder: "••••", text: $password)
 
-                VStack(spacing: AuraSpacing.medium) {
-                    Button {
-                        Task {
-                            await viewModel.signInWithApple()
-                            onContinue()
-                        }
-                    } label: {
-                        Text("Continuar con Apple")
-                            .font(AuraTypography.bodyStrong)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AuraSpacing.medium)
-                            .background(AuraColors.primaryDark)
-                            .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                    }
-
-                    Button {
-                        Task {
-                            await viewModel.signInWithGoogle()
-                            onContinue()
-                        }
-                    } label: {
-                        Text("Continuar con Google")
-                            .font(AuraTypography.bodyStrong)
+                        Button("¿Olvidaste tu contraseña?") {}
+                            .font(AuraTypography.footnote)
                             .foregroundStyle(AuraColors.textSecondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AuraSpacing.medium)
-                            .background(AuraColors.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AuraCorners.medium)
-                                    .stroke(AuraColors.cardStroke, lineWidth: 1)
-                            )
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .padding(.horizontal, AuraSpacing.small)
+
+                    VStack(spacing: AuraSpacing.medium) {
+                        Button {
+                            onContinue()
+                        } label: {
+                            Text("Iniciar Sesión")
+                                .font(AuraTypography.bodyStrong)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AuraSpacing.medium)
+                                .background(AuraColors.primary)
+                                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                                .shadow(color: AuraColors.primary.opacity(0.3), radius: 8, y: 4)
+                        }
+
+                        Button {
+                            Task {
+                                await viewModel.signInWithApple()
+                                onContinue()
+                            }
+                        } label: {
+                            Text("Continuar con Apple")
+                                .font(AuraTypography.bodyStrong)
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AuraSpacing.medium)
+                                .background(Color.black)
+                                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 4)
+                        }
+
+                        Button {
+                            Task {
+                                await viewModel.signInWithGoogle()
+                                onContinue()
+                            }
+                        } label: {
+                            Text("Continuar con Google")
+                                .font(AuraTypography.bodyStrong)
+                                .foregroundStyle(AuraColors.textSecondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AuraSpacing.medium)
+                                .background(AuraColors.surface)
+                                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                                .shadow(color: AuraColors.shadowCool, radius: 10, y: 4)
+                        }
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(AuraTypography.caption)
+                            .foregroundStyle(.red)
                     }
                 }
-
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(AuraTypography.caption)
-                        .foregroundStyle(.red)
-                }
+                .padding(.horizontal, AuraSpacing.xLarge)
+                .padding(.bottom, AuraSpacing.xLarge)
             }
-            .padding(.horizontal, AuraSpacing.xLarge)
-            .padding(.bottom, AuraSpacing.xLarge)
         }
-        .background(AuraColors.background.ignoresSafeArea())
     }
 
     private func credentialField(title: String, placeholder: String, text: Binding<String>) -> some View {
@@ -99,10 +128,7 @@ struct LoginView: View {
                 .padding(.vertical, AuraSpacing.smedium)
                 .background(AuraColors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AuraCorners.medium)
-                        .stroke(AuraColors.cardStroke, lineWidth: 1)
-                )
+                .shadow(color: AuraColors.shadowCool.opacity(0.6), radius: 8, y: 3)
         }
     }
 
@@ -118,10 +144,7 @@ struct LoginView: View {
                 .padding(.vertical, AuraSpacing.smedium)
                 .background(AuraColors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AuraCorners.medium)
-                        .stroke(AuraColors.cardStroke, lineWidth: 1)
-                )
+                .shadow(color: AuraColors.shadowCool.opacity(0.6), radius: 8, y: 3)
         }
     }
 }
@@ -129,3 +152,4 @@ struct LoginView: View {
 #Preview {
     LoginView()
 }
+
