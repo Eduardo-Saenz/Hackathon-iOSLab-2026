@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload to Appetize.io
         if: steps.appetize_check.outputs.has_token == 'true'
-        uses: appetizeio/github-action-appetize@v1
+        uses: appetizeio/github-action-appetize@v1.0.5
         with:
           apiToken: ${{ secrets.APPETIZE_TOKEN }}
           appFile: app.zip
