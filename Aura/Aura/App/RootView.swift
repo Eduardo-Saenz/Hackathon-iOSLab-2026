@@ -14,20 +14,37 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            switch viewModel.route {
-            case .auth:
-                LoginView {
-                    viewModel.handleAuthSuccess()
+            if viewModel.isCheckingSession {
+                // Brief splash while validating stored session
+                ZStack {
+                    AuraColors.background.ignoresSafeArea()
+                    VStack(spacing: AuraSpacing.medium) {
+                        Text("Aura")
+                            .font(AuraTypography.hero)
+                            .foregroundStyle(AuraColors.textPrimary)
+                        ProgressView()
+                            .tint(AuraColors.primary)
+                    }
                 }
-            case .onboarding:
-                GoalSelectionView {
-                    viewModel.handleOnboardingComplete()
-                }
-            case .mainTabs:
-                RootTabView {
-                    viewModel.signOut()
+            } else {
+                switch viewModel.route {
+                case .auth:
+                    LoginView {
+                        viewModel.handleAuthSuccess()
+                    }
+                case .onboarding:
+                    GoalSelectionView {
+                        viewModel.handleOnboardingComplete()
+                    }
+                case .mainTabs:
+                    RootTabView {
+                        viewModel.signOut()
+                    }
                 }
             }
+        }
+        .task {
+            await viewModel.validateStoredSession()
         }
     }
 }

@@ -13,6 +13,7 @@ final class AppPreferences {
         static let lastCompletedActionsDate = "progress.lastCompletedActionsDate"
         static let completedActionIDs = "progress.completedActionIDs"
         static let completedActionIDsDate = "progress.completedActionIDsDate"
+        static let userEmail = "auth.userEmail"
     }
 
     // MARK: - Shared
@@ -79,5 +80,10 @@ final class AppPreferences {
     var completedActionIDsDate: Date? {
         get { defaults.object(forKey: Keys.completedActionIDsDate) as? Date }
         set { defaults.set(newValue, forKey: Keys.completedActionIDsDate) }
+    }
+
+    var userEmail: String? {
+        get { defaults.string(forKey: Keys.userEmail) }
+        set { defaults.set(newValue, forKey: Keys.userEmail) }
     }
 }

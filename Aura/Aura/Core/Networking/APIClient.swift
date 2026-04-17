@@ -8,7 +8,7 @@ struct APIClient: APIClientProtocol {
     let baseURL: URL
     let session: URLSession
 
-    init(baseURL: URL = APIEnvironment.current.baseURL, session: URLSession = .shared) {
+    init(baseURL: URL = AppConfig.apiBaseURL, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.session = session
     }
@@ -38,6 +38,12 @@ struct APIClient: APIClientProtocol {
         if endpoint.body != nil {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
+
+        // Inject auth token if available
+        if let token = TokenManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
         endpoint.headers.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
@@ -74,7 +80,9 @@ struct APIClient: APIClientProtocol {
         }
 
         do {
-            return try JSONDecoder().decode(T.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            return try decoder.decode(T.self, from: data)
         } catch {
             let responseBody = String(data: data, encoding: .utf8)
             #if DEBUG
