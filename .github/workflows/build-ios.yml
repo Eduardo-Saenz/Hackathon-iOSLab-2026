@@ -59,11 +59,13 @@ jobs:
           retention-days: 14
 
       - name: Upload to Appetize.io
-        if: ${{ secrets.APPETIZE_TOKEN != '' }}
+        if: ${{ env.APPETIZE_TOKEN != '' }}
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             "https://api.appetize.io/v2/apps" \
-            -H "Authorization: Bearer ${{ secrets.APPETIZE_TOKEN }}" \
+            -H "Authorization: Bearer $APPETIZE_TOKEN" \
             -F "file=@$APP_ZIP" \
             -F "platform=ios")
 
@@ -84,7 +86,9 @@ jobs:
           fi
 
       - name: Appetize not configured notice
-        if: ${{ secrets.APPETIZE_TOKEN == '' }}
+        if: ${{ env.APPETIZE_TOKEN == '' }}
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
         run: |
           echo "::notice::APPETIZE_TOKEN not set — build artifact saved but not uploaded to Appetize.io"
           echo "To enable Appetize preview: Settings → Secrets → New secret → APPETIZE_TOKEN"
