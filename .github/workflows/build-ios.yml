@@ -58,37 +58,20 @@ jobs:
           path: app.zip
           retention-days: 14
 
-      - name: Upload to Appetize.io
-        if: ${{ env.APPETIZE_TOKEN != '' }}
-        env:
-          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
+      - name: Check Appetize token
+        id: appetize_check
         run: |
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://api.appetize.io/v2/apps" \
-            -H "Authorization: Bearer $APPETIZE_TOKEN" \
-            -F "file=@$APP_ZIP" \
-            -F "platform=ios")
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          echo "HTTP Status: $HTTP_CODE"
-          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            PUBLIC_KEY=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('publicKey',''))" 2>/dev/null || echo "")
-            if [ -n "$PUBLIC_KEY" ]; then
-              echo "## Appetize Preview" >> $GITHUB_STEP_SUMMARY
-              echo "https://appetize.io/app/$PUBLIC_KEY" >> $GITHUB_STEP_SUMMARY
-            fi
+          if [ -n "${{ secrets.APPETIZE_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
           else
-            echo "::warning::Appetize upload returned HTTP $HTTP_CODE"
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "::notice::APPETIZE_TOKEN not set — build artifact saved. Add it in Settings → Secrets → Actions."
           fi
 
-      - name: Appetize not configured notice
-        if: ${{ env.APPETIZE_TOKEN == '' }}
-        env:
-          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
-        run: |
-          echo "::notice::APPETIZE_TOKEN not set — build artifact saved but not uploaded to Appetize.io"
-          echo "To enable Appetize preview: Settings → Secrets → New secret → APPETIZE_TOKEN"
+      - name: Upload to Appetize.io
+        if: steps.appetize_check.outputs.has_token == 'true'
+        uses: appetizeio/github-action-appetize@v1
+        with:
+          apiToken: ${{ secrets.APPETIZE_TOKEN }}
+          appFile: app.zip
+          platform: ios
