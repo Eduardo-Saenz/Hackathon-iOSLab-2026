@@ -8,6 +8,10 @@ struct GoalSelectionView: View {
     @State private var currentStep: Int = 1
     @State private var selectedTone: ToneOption?
 
+    @State private var firstName: String = ""
+    @State private var lastName: String = ""
+    @State private var age: String = ""
+
     private let maxGoals = 3
 
     init(onContinue: @escaping () -> Void = {}) {
@@ -25,38 +29,49 @@ struct GoalSelectionView: View {
             VStack(alignment: .leading, spacing: AuraSpacing.xLarge) {
                 stepPill
 
-                if currentStep == 1 {
-                    goalsStep
-                        .transition(
-                            .asymmetric(
-                                insertion: .move(edge: .leading).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
+                Group {
+                    if currentStep == 1 {
+                        personalInfoStep
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .leading).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                )
                             )
-                        )
-                } else {
-                    toneStep
-                        .transition(
-                            .asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
+                    } else if currentStep == 2 {
+                        goalsStep
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                )
                             )
-                        )
+                    } else {
+                        toneStep
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                )
+                            )
+                    }
                 }
 
                 Spacer(minLength: 0)
 
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        if currentStep == 1 {
-                            currentStep = 2
+                        if currentStep < 3 {
+                            currentStep += 1
                         } else {
-                            // Aquí puedes guardar selectedTone en tu viewModel o preferences si quieres
+                            // Aquí puedes guardar firstName, lastName, age y selectedTone
+                            // en tu viewModel o preferences si quieres
                             viewModel.completeOnboarding()
                             onContinue()
                         }
                     }
                 } label: {
-                    Text(currentStep == 1 ? "Siguiente" : "Continuar")
+                    Text(currentStep < 3 ? "Siguiente" : "Continuar")
                         .font(AuraTypography.bodyStrong)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -84,7 +99,7 @@ struct GoalSelectionView: View {
     // MARK: - Step Pill
 
     private var stepPill: some View {
-        Text(currentStep == 1 ? "PASO 1 DE 2" : "PASO 2 DE 2")
+        Text("PASO \(currentStep) DE 3")
             .font(AuraTypography.caption)
             .foregroundStyle(AuraColors.primary)
             .padding(.horizontal, AuraSpacing.medium)
@@ -94,6 +109,84 @@ struct GoalSelectionView: View {
     }
 
     // MARK: - Step 1
+
+    private var personalInfoStep: some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.xLarge) {
+            VStack(alignment: .leading, spacing: AuraSpacing.small) {
+                Text("Cuéntanos sobre ti")
+                    .font(AuraTypography.title)
+                    .foregroundStyle(AuraColors.textPrimary)
+
+                Text("(Completa tus datos)")
+                    .font(AuraTypography.body)
+                    .foregroundStyle(AuraColors.textSecondary)
+            }
+            .padding(.horizontal, AuraSpacing.small)
+
+            VStack(spacing: AuraSpacing.medium) {
+                onboardingField(
+                    title: "Nombre",
+                    placeholder: "Escribe tu nombre",
+                    text: $firstName
+                )
+
+                onboardingField(
+                    title: "Apellido",
+                    placeholder: "Escribe tu apellido",
+                    text: $lastName
+                )
+
+                onboardingNumberField(
+                    title: "Edad",
+                    placeholder: "Escribe tu edad",
+                    text: $age
+                )
+            }
+            .padding(.horizontal, AuraSpacing.small)
+        }
+    }
+
+    private func onboardingField(title: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.small) {
+            Text(title)
+                .font(AuraTypography.footnote)
+                .foregroundStyle(AuraColors.textSecondary)
+
+            TextField(placeholder, text: text)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .font(AuraTypography.body)
+                .foregroundStyle(AuraColors.textSecondary)
+                .padding(.horizontal, AuraSpacing.medium)
+                .padding(.vertical, AuraSpacing.smedium)
+                .background(AuraColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                .shadow(color: AuraColors.shadowCool.opacity(0.6), radius: 8, y: 3)
+        }
+    }
+
+    private func onboardingNumberField(title: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.small) {
+            Text(title)
+                .font(AuraTypography.footnote)
+                .foregroundStyle(AuraColors.textSecondary)
+
+            TextField(placeholder, text: text)
+                .keyboardType(.numberPad)
+                .font(AuraTypography.body)
+                .foregroundStyle(AuraColors.textSecondary)
+                .padding(.horizontal, AuraSpacing.medium)
+                .padding(.vertical, AuraSpacing.smedium)
+                .background(AuraColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                .shadow(color: AuraColors.shadowCool.opacity(0.6), radius: 8, y: 3)
+                .onChange(of: age) { newValue in
+                    age = newValue.filter { $0.isNumber }
+                }
+        }
+    }
+
+    // MARK: - Step 2
 
     private var goalsStep: some View {
         VStack(alignment: .leading, spacing: AuraSpacing.xLarge) {
@@ -175,7 +268,7 @@ struct GoalSelectionView: View {
         .disabled(limitReached && !isSelected)
     }
 
-    // MARK: - Step 2
+    // MARK: - Step 3
 
     private var toneStep: some View {
         VStack(alignment: .leading, spacing: AuraSpacing.xLarge) {
@@ -239,10 +332,17 @@ struct GoalSelectionView: View {
     // MARK: - State
 
     private var primaryButtonEnabled: Bool {
-        if currentStep == 1 {
+        switch currentStep {
+        case 1:
+            return !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                   !lastName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                   !age.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case 2:
             return !viewModel.selectedGoalIDs.isEmpty
-        } else {
+        case 3:
             return selectedTone != nil
+        default:
+            return false
         }
     }
 }

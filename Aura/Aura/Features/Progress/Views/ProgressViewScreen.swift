@@ -337,11 +337,6 @@ struct ProgressViewScreen: View {
     private var emotionWheelCard: some View {
         VStack(spacing: AuraSpacing.large) {
             HStack(spacing: AuraSpacing.small) {
-                emotionStepPill(title: "Centro", isActive: revealedEmotionLevel >= 1)
-                emotionStepPill(title: "Nivel 2", isActive: revealedEmotionLevel >= 2)
-                emotionStepPill(title: "Nivel 3", isActive: revealedEmotionLevel >= 3)
-
-                Spacer()
 
                 Button {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {

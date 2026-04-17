@@ -41,7 +41,6 @@ struct LoginView: View {
                         .foregroundStyle(AuraColors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.top, 80)
-                        // Add slight shadow to stand out against glow
                         .shadow(color: AuraColors.surface.opacity(0.5), radius: 2)
 
                     VStack(alignment: .leading, spacing: AuraSpacing.medium) {
@@ -124,6 +123,7 @@ struct LoginView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(AuraTypography.body)
+                .foregroundStyle(AuraColors.textSecondary) // Color del texto escrito
                 .padding(.horizontal, AuraSpacing.medium)
                 .padding(.vertical, AuraSpacing.smedium)
                 .background(AuraColors.surface)
@@ -140,6 +140,7 @@ struct LoginView: View {
 
             SecureField(placeholder, text: text)
                 .font(AuraTypography.body)
+                .foregroundStyle(AuraColors.textSecondary) // Color del texto escrito
                 .padding(.horizontal, AuraSpacing.medium)
                 .padding(.vertical, AuraSpacing.smedium)
                 .background(AuraColors.surface)
@@ -152,4 +153,3 @@ struct LoginView: View {
 #Preview {
     LoginView()
 }
-
