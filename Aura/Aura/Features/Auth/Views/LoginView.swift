@@ -1,26 +1,26 @@
 import SwiftUI
+import AuthenticationServices
 
 @MainActor
 struct LoginView: View {
     @StateObject private var viewModel: AuthViewModel
     @State private var email = ""
     @State private var password = ""
-    let onContinue: () -> Void
 
     init(onContinue: @escaping () -> Void = {}) {
-        _viewModel = StateObject(wrappedValue: AuthViewModel(appPreferences: .shared))
-        self.onContinue = onContinue
+        let vm = AuthViewModel(appPreferences: .shared)
+        vm.onAuthSuccess = onContinue
+        _viewModel = StateObject(wrappedValue: vm)
     }
 
-    init(viewModel: AuthViewModel, onContinue: @escaping () -> Void = {}) {
+    init(viewModel: AuthViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
-        self.onContinue = onContinue
     }
 
     var body: some View {
         ZStack {
             AuraColors.background.ignoresSafeArea()
-            
+
             // Soft moonlit glow
             Circle()
                 .fill(
@@ -43,73 +43,108 @@ struct LoginView: View {
                         .padding(.top, 80)
                         .shadow(color: AuraColors.surface.opacity(0.5), radius: 2)
 
+                    // Toggle sign-in / sign-up
+                    Picker("", selection: $viewModel.isSignUpMode) {
+                        Text("Iniciar Sesión").tag(false)
+                        Text("Crear Cuenta").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, AuraSpacing.small)
+
                     VStack(alignment: .leading, spacing: AuraSpacing.medium) {
                         credentialField(title: "Email", placeholder: "tu@email.com", text: $email)
-                        secureCredentialField(title: "Contraseña", placeholder: "••••", text: $password)
-
-                        Button("¿Olvidaste tu contraseña?") {}
-                            .font(AuraTypography.footnote)
-                            .foregroundStyle(AuraColors.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .keyboardType(.emailAddress)
+                        secureCredentialField(title: "Contraseña", placeholder: "••••••", text: $password)
                     }
                     .padding(.horizontal, AuraSpacing.small)
 
                     VStack(spacing: AuraSpacing.medium) {
-                        Button {
-                            onContinue()
-                        } label: {
-                            Text("Iniciar Sesión")
-                                .font(AuraTypography.bodyStrong)
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, AuraSpacing.medium)
-                                .background(AuraColors.primary)
-                                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                                .shadow(color: AuraColors.primary.opacity(0.3), radius: 8, y: 4)
-                        }
-
+                        // Email/Password button
                         Button {
                             Task {
-                                await viewModel.signInWithApple()
-                                onContinue()
+                                await viewModel.signInWithEmail(email: email, password: password)
                             }
                         } label: {
-                            Text("Continuar con Apple")
-                                .font(AuraTypography.bodyStrong)
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, AuraSpacing.medium)
-                                .background(Color.black)
-                                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, y: 4)
+                            Group {
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text(viewModel.isSignUpMode ? "Crear Cuenta" : "Iniciar Sesión")
+                                }
+                            }
+                            .font(AuraTypography.bodyStrong)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AuraSpacing.medium)
+                            .background(AuraColors.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                            .shadow(color: AuraColors.primary.opacity(0.3), radius: 8, y: 4)
                         }
+                        .disabled(viewModel.isLoading)
 
+                        dividerRow
+
+                        // Apple Sign In
+                        SignInWithAppleButton(
+                            .continue,
+                            onRequest: { request in
+                                request.requestedScopes = [.email, .fullName]
+                            },
+                            onCompletion: { result in
+                                Task {
+                                    await viewModel.handleAppleSignIn(result: result)
+                                }
+                            }
+                        )
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(height: 50)
+                        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+
+                        // Google Sign In
                         Button {
                             Task {
                                 await viewModel.signInWithGoogle()
-                                onContinue()
                             }
                         } label: {
-                            Text("Continuar con Google")
-                                .font(AuraTypography.bodyStrong)
-                                .foregroundStyle(AuraColors.textSecondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, AuraSpacing.medium)
-                                .background(AuraColors.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                                .shadow(color: AuraColors.shadowCool, radius: 10, y: 4)
+                            HStack(spacing: AuraSpacing.small) {
+                                Image(systemName: "globe")
+                                Text("Continuar con Google")
+                            }
+                            .font(AuraTypography.bodyStrong)
+                            .foregroundStyle(AuraColors.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AuraSpacing.medium)
+                            .background(AuraColors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                            .shadow(color: AuraColors.shadowCool, radius: 10, y: 4)
                         }
+                        .disabled(viewModel.isLoading)
                     }
 
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
                             .font(AuraTypography.caption)
                             .foregroundStyle(.red)
+                            .padding(.horizontal, AuraSpacing.small)
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, AuraSpacing.xLarge)
                 .padding(.bottom, AuraSpacing.xLarge)
             }
+        }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.errorMessage)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isSignUpMode)
+    }
+
+    private var dividerRow: some View {
+        HStack {
+            Rectangle().fill(AuraColors.secondary.opacity(0.4)).frame(height: 1)
+            Text("o")
+                .font(AuraTypography.caption)
+                .foregroundStyle(AuraColors.textSecondary)
+            Rectangle().fill(AuraColors.secondary.opacity(0.4)).frame(height: 1)
         }
     }
 
@@ -123,7 +158,7 @@ struct LoginView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(AuraTypography.body)
-                .foregroundStyle(AuraColors.textSecondary) // Color del texto escrito
+                .foregroundStyle(AuraColors.textSecondary)
                 .padding(.horizontal, AuraSpacing.medium)
                 .padding(.vertical, AuraSpacing.smedium)
                 .background(AuraColors.surface)
@@ -140,7 +175,7 @@ struct LoginView: View {
 
             SecureField(placeholder, text: text)
                 .font(AuraTypography.body)
-                .foregroundStyle(AuraColors.textSecondary) // Color del texto escrito
+                .foregroundStyle(AuraColors.textSecondary)
                 .padding(.horizontal, AuraSpacing.medium)
                 .padding(.vertical, AuraSpacing.smedium)
                 .background(AuraColors.surface)
