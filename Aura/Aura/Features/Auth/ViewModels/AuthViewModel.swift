@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 import AuthenticationServices
+import UIKit
+import GoogleSignIn
 
 @MainActor
 final class AuthViewModel: ObservableObject {
@@ -78,18 +80,70 @@ final class AuthViewModel: ObservableObject {
         isLoading = false
     }
 
-    // MARK: - Google Sign In (placeholder — requires GoogleSignIn SDK)
+    // MARK: - Google Sign In
 
     func signInWithGoogle() async {
         isLoading = true
         errorMessage = nil
+        defer { isLoading = false }
 
-        // Google Sign-In requires the GoogleSignIn SDK added via SPM in Xcode.
-        // For now, show a message. Once the SDK is added on a Mac, replace this
-        // with the real GoogleSignIn flow that gets an idToken.
-        errorMessage = "Google Sign-In requiere configurar el SDK en Xcode (Mac). Usa email o Apple por ahora."
+        AuraGoogleConfiguration.applyIfAvailable()
 
-        isLoading = false
+        guard GIDSignIn.sharedInstance.configuration != nil else {
+            errorMessage =
+                "Google Sign-In: define GOOGLE_CLIENT_ID en el scheme de Xcode, o añade GoogleService-Info.plist (copia desde GoogleService-Info.plist.example). El backend debe usar el mismo GOOGLE_CLIENT_ID."
+            return
+        }
+
+        guard let presenter = Self.presentingViewController() else {
+            errorMessage = "No se pudo abrir el inicio de sesión de Google."
+            return
+        }
+
+        do {
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+            guard let idToken = result.user.idToken?.tokenString else {
+                errorMessage = "Google no devolvió idToken. Revisa el cliente OAuth iOS en Google Cloud."
+                return
+            }
+
+            try await authService.loginWithGoogle(idToken: idToken)
+            appPreferences.isAuthenticated = true
+            if let email = result.user.profile?.email {
+                appPreferences.userEmail = email
+            }
+            onAuthSuccess?()
+        } catch {
+            let nsError = error as NSError
+            // kGIDSignInErrorDomain / GIDSignInErrorCode are not always visible to Swift; match NSError from the SDK.
+            if nsError.domain == "com.google.GIDSignIn", nsError.code == -5 {
+                return
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private static func presentingViewController() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive })
+                ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+                ?? scene.windows.first?.rootViewController else {
+            return nil
+        }
+        return topViewController(from: root)
+    }
+
+    private static func topViewController(from root: UIViewController) -> UIViewController {
+        if let presented = root.presentedViewController {
+            return topViewController(from: presented)
+        }
+        if let nav = root as? UINavigationController, let visible = nav.visibleViewController {
+            return topViewController(from: visible)
+        }
+        if let tab = root as? UITabBarController, let selected = tab.selectedViewController {
+            return topViewController(from: selected)
+        }
+        return root
     }
 
     // MARK: - Sign Out
