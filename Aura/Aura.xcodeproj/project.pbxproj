@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E8D8C7B62F9027900097F503 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E8D8C7B62F9027900097F502 /* GoogleSignIn */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		08786CCF2F9027870097F5BC /* Aura.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Aura.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E8D8C7B62F9027900097F503 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = Aura;
 			packageProductDependencies = (
+				E8D8C7B62F9027900097F502 /* GoogleSignIn */,
 			);
 			productName = Aura;
 			productReference = 08786CCF2F9027870097F5BC /* Aura.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 08786CC62F9027870097F5BC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E8D8C7B62F9027900097F501 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 08786CD02F9027870097F5BC /* Products */;
 			projectDirPath = "";
@@ -254,9 +263,11 @@
 				CODE_SIGN_ENTITLEMENTS = Aura/Aura.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F5R636RP65;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.321733285111-91c8kj0qkp0474irnhrvhuqf5blpr9bv";
+				INFOPLIST_FILE = Aura/GoogleURLSchemes.plist;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Aura usa tus datos de salud para personalizar tus micro-acciones diarias de bienestar.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Aura puede guardar progreso de bienestar cuando tú lo autorices.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -290,9 +301,11 @@
 				CODE_SIGN_ENTITLEMENTS = Aura/Aura.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F5R636RP65;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.321733285111-91c8kj0qkp0474irnhrvhuqf5blpr9bv";
+				INFOPLIST_FILE = Aura/GoogleURLSchemes.plist;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Aura usa tus datos de salud para personalizar tus micro-acciones diarias de bienestar.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Aura puede guardar progreso de bienestar cuando tú lo autorices.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -340,6 +353,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E8D8C7B62F9027900097F501 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E8D8C7B62F9027900097F502 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E8D8C7B62F9027900097F501 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 08786CC72F9027870097F5BC /* Project object */;
 }
