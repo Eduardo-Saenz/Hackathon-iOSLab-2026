@@ -6,6 +6,7 @@ final class AppPreferences {
     private enum Keys {
         static let isAuthenticated = "app.isAuthenticated"
         static let hasCompletedOnboarding = "app.hasCompletedOnboarding"
+        static let diagnosticsVisible = "app.diagnosticsVisible"
         static let notificationEnabled = "settings.notificationEnabled"
         static let selectedGoalIDs = "onboarding.selectedGoalIDs"
         static let streakDays = "progress.streakDays"
@@ -38,6 +39,11 @@ final class AppPreferences {
     var hasCompletedOnboarding: Bool {
         get { defaults.bool(forKey: Keys.hasCompletedOnboarding) }
         set { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
+    }
+
+    var diagnosticsVisible: Bool {
+        get { defaults.bool(forKey: Keys.diagnosticsVisible) }
+        set { defaults.set(newValue, forKey: Keys.diagnosticsVisible) }
     }
 
     var notificationEnabled: Bool {

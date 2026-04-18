@@ -257,6 +257,7 @@
 				DEVELOPMENT_TEAM = F5R636RP65;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Aura usa tus datos de salud para personalizar tus micro-acciones diarias de bienestar.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Aura puede guardar progreso de bienestar cuando tú lo autorices.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

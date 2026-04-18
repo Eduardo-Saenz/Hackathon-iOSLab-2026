@@ -4,6 +4,7 @@ import Combine
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published var notificationsEnabled: Bool
+    @Published var diagnosticsVisible: Bool
     @Published private(set) var healthKitEnabled = false
     @Published private(set) var healthKitStatusText = "No conectado"
     @Published private(set) var availableGoals: [WellnessGoal] = WellnessGoal.predefined
@@ -17,6 +18,7 @@ final class SettingsViewModel: ObservableObject {
         self.appPreferences = appPreferences
         self.healthKitManager = HealthKitManager()
         self.notificationsEnabled = appPreferences.notificationEnabled
+        self.diagnosticsVisible = appPreferences.diagnosticsVisible
         self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
         if self.selectedGoalIDs.isEmpty {
             self.selectedGoalIDs = Set(WellnessGoal.predefined.prefix(2).map(\.id))
@@ -28,6 +30,7 @@ final class SettingsViewModel: ObservableObject {
         self.appPreferences = appPreferences
         self.healthKitManager = healthKitManager
         self.notificationsEnabled = appPreferences.notificationEnabled
+        self.diagnosticsVisible = appPreferences.diagnosticsVisible
         self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
         if self.selectedGoalIDs.isEmpty {
             self.selectedGoalIDs = Set(WellnessGoal.predefined.prefix(2).map(\.id))
@@ -38,6 +41,11 @@ final class SettingsViewModel: ObservableObject {
     func updateNotifications(_ enabled: Bool) {
         notificationsEnabled = enabled
         appPreferences.notificationEnabled = enabled
+    }
+
+    func updateDiagnosticsVisible(_ enabled: Bool) {
+        diagnosticsVisible = enabled
+        appPreferences.diagnosticsVisible = enabled
     }
 
     func refreshHealthKitStatus() {

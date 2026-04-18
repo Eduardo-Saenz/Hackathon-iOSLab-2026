@@ -20,6 +20,9 @@ struct HealthDataPayload: Codable {
     let sleepHoursLastNight: Double
     let sleepGoalHours: Double
     let activeCaloriesToday: Double
+    let sleepStages: SleepStagesPayload?
+    let heartRateAverageToday: Double?
+    let restingHeartRate: Double?
 
     enum CodingKeys: String, CodingKey {
         case stepsToday = "steps_today"
@@ -27,6 +30,23 @@ struct HealthDataPayload: Codable {
         case sleepHoursLastNight = "sleep_hours_last_night"
         case sleepGoalHours = "sleep_goal_hours"
         case activeCaloriesToday = "active_calories_today"
+        case sleepStages = "sleep_stages"
+        case heartRateAverageToday = "heart_rate_average_today"
+        case restingHeartRate = "resting_heart_rate"
+    }
+}
+
+struct SleepStagesPayload: Codable {
+    let coreHours: Double
+    let deepHours: Double
+    let remHours: Double
+    let awakeHours: Double
+
+    enum CodingKeys: String, CodingKey {
+        case coreHours = "core_hours"
+        case deepHours = "deep_hours"
+        case remHours = "rem_hours"
+        case awakeHours = "awake_hours"
     }
 }
 
@@ -51,7 +71,7 @@ struct MicroAction: Codable, Identifiable {
     let category: String
     let difficulty: String
     let estimatedMinutes: Int
-    let justification: String
+    let justification: String?
 
     enum CodingKeys: String, CodingKey {
         case id

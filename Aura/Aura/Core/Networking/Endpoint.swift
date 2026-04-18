@@ -12,3 +12,16 @@ struct Endpoint {
     var headers: [String: String] = [:]
     var body: Data?
 }
+
+extension Endpoint {
+    static let health = Endpoint(path: "/health", method: .get)
+
+    static func generateActions(body: Data) -> Endpoint {
+        Endpoint(
+            path: "/generate-actions",
+            method: .post,
+            headers: [:],
+            body: body
+        )
+    }
+}

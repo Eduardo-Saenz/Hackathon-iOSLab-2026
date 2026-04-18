@@ -111,9 +111,44 @@ struct HomeView: View {
                         }
                     }
 
+                    if let focusArea = viewModel.focusArea, !focusArea.isEmpty {
+                        Text("FOCO: \(focusArea)")
+                            .font(AuraTypography.mini)
+                            .foregroundStyle(AuraColors.primary)
+                            .padding(.horizontal, AuraSpacing.small)
+                            .padding(.vertical, AuraSpacing.xSmall)
+                            .background(AuraColors.surface.opacity(0.9))
+                            .clipShape(Capsule())
+                    }
+
                     Text("\"\(viewModel.summary)\"")
                         .font(AuraTypography.bodyStrong)
                         .foregroundStyle(AuraColors.textPrimary)
+
+                    if viewModel.diagnosticsVisible {
+                        Text(viewModel.backendSyncStatusText)
+                            .font(AuraTypography.mini)
+                            .foregroundStyle(AuraColors.textSecondary)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("DEV DIAGNÓSTICO")
+                                .font(AuraTypography.mini)
+                                .foregroundStyle(AuraColors.primary)
+                            Text("Servicio: \(viewModel.backendModeText)")
+                                .font(AuraTypography.mini)
+                                .foregroundStyle(AuraColors.textSecondary)
+                            Text("Último refresh: \(viewModel.lastRefreshText)")
+                                .font(AuraTypography.mini)
+                                .foregroundStyle(AuraColors.textSecondary)
+                            Text("Primer action id: \(viewModel.diagnosticFirstActionID)")
+                                .font(AuraTypography.mini)
+                                .foregroundStyle(AuraColors.textSecondary)
+                        }
+                        .padding(.horizontal, AuraSpacing.small)
+                        .padding(.vertical, AuraSpacing.xSmall)
+                        .background(AuraColors.surface.opacity(0.9))
+                        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.small))
+                    }
 
                     HStack(spacing: AuraSpacing.small) {
                         statPillAI(icon: "moon.zzz.fill", text: "\(String(format: "%.1f", viewModel.sleepHours))h sueño")
@@ -173,7 +208,7 @@ struct HomeView: View {
                                     .font(AuraTypography.bodyStrong)
                                     .foregroundStyle(AuraColors.textPrimary)
                                 
-                                Text(primaryAction.justification)
+                                Text(primaryAction.justification ?? primaryAction.description)
                                     .font(AuraTypography.footnote)
                                     .foregroundStyle(AuraColors.textSecondary)
                                     .fixedSize(horizontal: false, vertical: true)

@@ -59,6 +59,22 @@ struct SettingsView: View {
                                 .tint(AuraColors.primary)
                         )
                     )
+
+                    Divider().padding(.leading, 54)
+
+                    settingsRow(
+                        icon: "ladybug",
+                        title: "Modo diagnóstico",
+                        subtitle: "Muestra logs técnicos en Home",
+                        trailing: AnyView(
+                            Toggle("", isOn: Binding(
+                                get: { viewModel.diagnosticsVisible },
+                                set: { viewModel.updateDiagnosticsVisible($0) }
+                            ))
+                            .labelsHidden()
+                            .tint(AuraColors.primary)
+                        )
+                    )
                 }
                 .cardStyle()
 
