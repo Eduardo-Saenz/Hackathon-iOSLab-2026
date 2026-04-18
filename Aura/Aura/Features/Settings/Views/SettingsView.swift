@@ -21,7 +21,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AuraSpacing.large) {
                 VStack(alignment: .leading, spacing: AuraSpacing.xSmall) {
-                    Text("Ajustes ⚙️")
+                    Text("Ajustes")
                         .font(AuraTypography.title2)
                         .foregroundStyle(AuraColors.textPrimary)
                     Text("Personaliza tu experiencia")

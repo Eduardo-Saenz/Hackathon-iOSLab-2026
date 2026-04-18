@@ -26,6 +26,7 @@ struct ProgressViewScreen: View {
     @State private var revealedEmotionLevel: Int = 1
     @State private var sentEmotionMessage: String? = nil
     @State private var hasLoadedSemana = false
+    @State private var showEmotionSentAlert = false
 
     private let bienestarColor = Color(hex: "#5FD1B8")
     private let medioColor = Color(hex: "#FFBE5C")
@@ -307,6 +308,11 @@ struct ProgressViewScreen: View {
                 resetEmotionMap(animated: true)
             }
         }
+        .alert("Emoción enviada", isPresented: $showEmotionSentAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Tu emoción fue enviada correctamente.")
+        }
     }
 
     private func loadSemanaIfNeeded(force: Bool) async {
@@ -555,8 +561,16 @@ struct ProgressViewScreen: View {
                             let branch = emotionBranches[primaryIdx]
                             let family = EmotionMapping.familyForWheelPrimary(branch.primary)
                             let label = selectedTertiary ?? selectedSecondary ?? branch.primary
+
                             await viewModel.submitEmotion(family: family, label: label, intensity: 5)
+
                             sentEmotionMessage = viewModel.compassionateResponse ?? "Emoción registrada"
+
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                resetEmotionMap(animated: false)
+                            }
+
+                            showEmotionSentAlert = true
                         }
                     } label: {
                         HStack {

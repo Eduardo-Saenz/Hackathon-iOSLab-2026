@@ -112,7 +112,7 @@ struct HomeView: View {
     private var headerSection: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(viewModel.greeting) 💙")
+                Text("\(viewModel.greeting)")
                     .font(AuraTypography.title2)
                     .foregroundStyle(AuraColors.textPrimary)
                 Text("Estamos aquí contigo, un día a la vez.")

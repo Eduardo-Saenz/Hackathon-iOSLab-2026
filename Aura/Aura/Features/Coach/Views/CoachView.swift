@@ -7,6 +7,7 @@ struct CoachView: View {
 
     @State private var didApplyEntryMessage = false
     @State private var sendButtonScale: CGFloat = 1.0
+    @FocusState private var isTextFieldFocused: Bool
 
     init() {
         self.entryMessage = nil
@@ -54,7 +55,7 @@ struct CoachView: View {
                     if viewModel.isLoading {
                         HStack(spacing: AuraSpacing.small) {
                             TypingDotsView()
-                            Text("Coach escribiendo...")
+                            Text("Buddy escribiendo...")
                                 .font(AuraTypography.footnote)
                                 .foregroundStyle(AuraColors.textSecondary)
                         }
@@ -66,11 +67,7 @@ struct CoachView: View {
                         errorBanner(errorMessage)
                     }
 
-                    if viewModel.usedBackendInLastResponse,
-                       let grounded = viewModel.lastResponseGrounded,
-                       let disclaimer = viewModel.lastResponseDisclaimer {
-                        backendDebugBanner(grounded: grounded, disclaimer: disclaimer)
-                    }
+                       
                 }
                 .padding(.vertical, AuraSpacing.medium)
             }
@@ -81,6 +78,9 @@ struct CoachView: View {
                         .opacity(0.3)
                 }
             )
+            .onTapGesture {
+                isTextFieldFocused = false
+            }
 
             VStack(spacing: AuraSpacing.medium) {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -88,6 +88,7 @@ struct CoachView: View {
                         ForEach(viewModel.quickReplies, id: \.self) { reply in
                             Button {
                                 viewModel.draftMessage = reply
+                                isTextFieldFocused = true
                             } label: {
                                 Text(reply)
                                     .font(AuraTypography.footnote)
@@ -111,11 +112,14 @@ struct CoachView: View {
                 HStack(spacing: AuraSpacing.small) {
                     TextField("Escribe un mensaje...", text: $viewModel.draftMessage, axis: .vertical)
                         .font(AuraTypography.body)
+                        .foregroundStyle(AuraColors.primary)
+                        .tint(AuraColors.primary)
                         .padding(.horizontal, AuraSpacing.medium)
                         .padding(.vertical, 12)
                         .background(AuraColors.surfaceMuted)
                         .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
                         .lineLimit(1...4)
+                        .focused($isTextFieldFocused)
 
                     Button {
                         withAnimation(.spring(response: 0.15, dampingFraction: 0.5)) {
@@ -127,6 +131,7 @@ struct CoachView: View {
                             }
                         }
                         viewModel.sendDraft()
+                        isTextFieldFocused = false
                     } label: {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 18, weight: .semibold))
@@ -166,7 +171,7 @@ struct CoachView: View {
             Image(systemName: "bubble.left.and.text.bubble.right")
                 .font(.system(size: 28))
                 .foregroundStyle(AuraColors.textSecondary)
-            Text("Empieza una conversación con tu coach")
+            Text("Empieza una conversación con tu buddy")
                 .font(AuraTypography.bodyStrong)
                 .foregroundStyle(AuraColors.textPrimary)
         }
@@ -185,14 +190,14 @@ struct CoachView: View {
                     )
                 )
                 .frame(width: 48, height: 48)
-                .overlay(Text("🤖"))
+                .overlay(Text(""))
 
             VStack(alignment: .leading, spacing: AuraSpacing.xSmall) {
-                Text("Tu Coach AI")
+                Text("Tu Buddy")
                     .font(AuraTypography.headline)
                     .foregroundStyle(AuraColors.textPrimary)
 
-                Text("● En línea · Bienestar AI")
+                Text("● En línea · Aura AI")
                     .font(AuraTypography.footnote)
                     .foregroundStyle(AuraColors.primary)
             }
@@ -286,29 +291,6 @@ struct CoachView: View {
         .padding(AuraSpacing.medium)
         .background(AuraColors.surfaceMuted)
         .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-        .padding(.horizontal, AuraSpacing.medium)
-    }
-
-    private func backendDebugBanner(grounded: Bool, disclaimer: String) -> some View {
-        VStack(alignment: .leading, spacing: AuraSpacing.xSmall) {
-            Text("Backend chat activo")
-                .font(AuraTypography.mini)
-                .foregroundStyle(AuraColors.primary)
-            Text("Grounded: \(grounded ? "sí" : "no")")
-                .font(AuraTypography.mini)
-                .foregroundStyle(AuraColors.textSecondary)
-            Text(disclaimer)
-                .font(AuraTypography.mini)
-                .foregroundStyle(AuraColors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(AuraSpacing.medium)
-        .background(AuraColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: AuraCorners.medium)
-                .stroke(AuraColors.cardStroke.opacity(0.5), lineWidth: 1)
-        )
         .padding(.horizontal, AuraSpacing.medium)
     }
 
