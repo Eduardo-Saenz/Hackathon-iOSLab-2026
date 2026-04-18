@@ -19,6 +19,7 @@ struct ProgressViewScreen: View {
     @StateObject private var viewModel: ProgressScreenViewModel
     @State private var selectedTab = "Diario"
     @State private var animateBars = false
+    @State private var hoveredBarIndex: Int? = nil
 
     @State private var selectedPrimaryIndex: Int? = nil
     @State private var selectedSecondary: String? = nil
@@ -26,6 +27,7 @@ struct ProgressViewScreen: View {
     @State private var revealedEmotionLevel: Int = 1
     @State private var sentEmotionMessage: String? = nil
     @State private var hasLoadedSemana = false
+    @State private var hasLoadedJournal = false
     @State private var showEmotionSentAlert = false
 
     private let bienestarColor = Color(hex: "#5FD1B8")
@@ -285,8 +287,11 @@ struct ProgressViewScreen: View {
         .background(AuraColors.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task(id: selectedTab) {
-            guard selectedTab == "Semana" else { return }
-            await loadSemanaIfNeeded(force: !hasLoadedSemana)
+            if selectedTab == "Semana" {
+                await loadSemanaIfNeeded(force: !hasLoadedSemana)
+            } else if selectedTab == "Diario" {
+                await loadJournalIfNeeded(force: !hasLoadedJournal)
+            }
         }
         .onAppear {
             if selectedTab == "Semana" {
@@ -319,6 +324,12 @@ struct ProgressViewScreen: View {
         guard force || !hasLoadedSemana else { return }
         await viewModel.loadSemanaData()
         hasLoadedSemana = true
+    }
+
+    private func loadJournalIfNeeded(force: Bool) async {
+        guard force || !hasLoadedJournal else { return }
+        await viewModel.loadJournalData()
+        hasLoadedJournal = true
     }
 
     @ViewBuilder
@@ -934,29 +945,62 @@ struct ProgressViewScreen: View {
                 }
             }
 
-            HStack(spacing: 0) {
-                ForEach(Array(weeklyData.enumerated()), id: \.offset) { offset, item in
-                    Spacer()
-                    VStack(spacing: AuraSpacing.small) {
-                        ZStack(alignment: .bottom) {
-                            Capsule()
-                                .fill(AuraColors.surfaceMuted.opacity(0.8))
-                                .frame(width: 24, height: 100)
-                            Capsule()
+            GeometryReader { geo in
+                HStack(spacing: 0) {
+                    ForEach(Array(weeklyData.enumerated()), id: \.offset) { offset, item in
+                        let isHovered = hoveredBarIndex == offset
+                        VStack(spacing: AuraSpacing.small) {
+                            ZStack(alignment: .bottom) {
+                                Capsule()
+                                    .fill(AuraColors.surfaceMuted.opacity(0.8))
+                                    .frame(width: 24, height: 100)
+                                    .scaleEffect(isHovered ? 1.05 : 1.0)
+                                
+                                // Water-fill mask: animates the clip area upward instead of geometry stretching
+                                Capsule()
+                                    .fill(item.dot)
+                                    .frame(width: 24, height: 100)
+                                    .mask(
+                                        Rectangle()
+                                            .frame(width: 40, height: animateBars ? 100 * item.fill : 0)
+                                            .frame(height: 100, alignment: .bottom)
+                                    )
+                                    .animation(AuraAnimations.liquidSpring.delay(Double(offset) * 0.05), value: animateBars)
+                                    .scaleEffect(isHovered ? 1.05 : 1.0)
+                            }
+                            Circle()
                                 .fill(item.dot)
-                                .frame(width: 24, height: animateBars ? 100 * item.fill : 0)
-                                .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(Double(offset) * 0.05), value: animateBars)
+                                .frame(width: 6, height: 6)
+                                .scaleEffect(isHovered ? 1.3 : 1.0)
+                            Text(item.day)
+                                .font(AuraTypography.mini)
+                                .foregroundStyle(isHovered ? item.dot : AuraColors.textSecondary)
                         }
-                        Circle()
-                            .fill(item.dot)
-                            .frame(width: 6, height: 6)
-                        Text(item.day)
-                            .font(AuraTypography.mini)
-                            .foregroundStyle(AuraColors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.6), value: isHovered)
                     }
-                    Spacer()
                 }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let count = CGFloat(weeklyData.count)
+                            guard count > 0 else { return }
+                            let segmentWidth = geo.size.width / count
+                            let index = Int(value.location.x / segmentWidth)
+                            let clampedIndex = max(0, min(weeklyData.count - 1, index))
+                            
+                            if hoveredBarIndex != clampedIndex {
+                                hoveredBarIndex = clampedIndex
+                                AuraHaptics.selection()
+                            }
+                        }
+                        .onEnded { _ in
+                            hoveredBarIndex = nil
+                        }
+                )
             }
+            .frame(height: 140)
         }
         .padding(AuraSpacing.large)
         .background(AuraColors.surface)
@@ -1096,23 +1140,42 @@ struct ProgressViewScreen: View {
                 .font(AuraTypography.footnote)
                 .foregroundStyle(AuraColors.textSecondary)
 
-            diarioCard(
-                day: "AYER",
-                icon: "face.dashed",
-                iconColor: medioColor,
-                completedActions: 1,
-                totalActions: 3,
-                text: "\"Noche difícil, mucha mente activa. Completé la respiración 4-7-8 pero me costó enfocarme.\""
-            )
+            if viewModel.isLoadingJournal {
+                ProgressView("Cargando diario...")
+                    .tint(AuraColors.primary)
+            } else {
+                if let today = viewModel.todayJournalSession {
+                    NavigationLink {
+                        CoachView(entryMessage: "Esto es para mi diario", sessionId: today.id, isReadOnly: false)
+                    } label: {
+                        diarioSessionCard(
+                            title: "HOY",
+                            subtitle: "Sesión activa",
+                            bodyText: today.latestMessagePreview ?? "Escribe cómo te fue hoy para empezar tu diario.",
+                            icon: "calendar",
+                            iconColor: AuraColors.primary,
+                            isLocked: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
 
-            diarioCard(
-                day: "SÁBADO",
-                icon: "face.smiling",
-                iconColor: bienestarColor,
-                completedActions: 3,
-                totalActions: 3,
-                text: "\"Me sentí más tranquilo. La caminata matutina ayudó mucho a empezar el día con claridad.\""
-            )
+                ForEach(viewModel.previousJournalSessions) { session in
+                    NavigationLink {
+                        CoachView(entryMessage: nil, sessionId: session.id, isReadOnly: true)
+                    } label: {
+                        diarioSessionCard(
+                            title: formattedJournalTitle(from: session.journalDate),
+                            subtitle: "Resumen guardado",
+                            bodyText: session.summary ?? session.latestMessagePreview ?? "Resumen no disponible todavía.",
+                            icon: "lock.fill",
+                            iconColor: medioColor,
+                            isLocked: true
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             VStack(spacing: AuraSpacing.medium) {
                 Image(systemName: "square.and.pencil")
@@ -1154,13 +1217,21 @@ struct ProgressViewScreen: View {
                     .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6]))
                     .foregroundStyle(AuraColors.cardStroke)
             )
+
+            if let journalErrorMessage = viewModel.journalErrorMessage {
+                weekStateCard(
+                    title: "Diario no disponible",
+                    message: journalErrorMessage,
+                    tint: medioColor
+                )
+            }
         }
     }
 
-    private func diarioCard(day: String, icon: String, iconColor: Color, completedActions: Int, totalActions: Int, text: String) -> some View {
+    private func diarioSessionCard(title: String, subtitle: String, bodyText: String, icon: String, iconColor: Color, isLocked: Bool) -> some View {
         VStack(alignment: .leading, spacing: AuraSpacing.medium) {
             HStack {
-                Text(day)
+                Text(title)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(AuraColors.textSecondary)
                     .tracking(1)
@@ -1169,31 +1240,45 @@ struct ProgressViewScreen: View {
                     Image(systemName: icon)
                         .foregroundStyle(iconColor)
                         .font(.system(size: 16))
-                    Text("\(completedActions)/\(totalActions) acciones")
+                    Text(subtitle)
                         .font(AuraTypography.mini)
                         .foregroundStyle(AuraColors.textPrimary)
                 }
             }
 
-            Text(text)
-                .font(AuraTypography.body.italic())
+            Text(bodyText)
+                .font(AuraTypography.body)
                 .foregroundStyle(AuraColors.textPrimary)
                 .lineSpacing(4)
 
-            HStack(spacing: 4) {
-                ForEach(0..<totalActions, id: \.self) { index in
-                    Capsule()
-                        .fill(index < completedActions ? bienestarColor : AuraColors.surfaceMuted)
-                        .frame(height: 4)
-                        .frame(maxWidth: .infinity)
+            if isLocked {
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .foregroundStyle(medioColor)
+                    Text("Solo lectura")
+                        .font(AuraTypography.mini)
+                        .foregroundStyle(AuraColors.textSecondary)
                 }
             }
-            .padding(.top, 4)
         }
         .padding(AuraSpacing.large)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: AuraCorners.large))
         .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+    }
+
+    private func formattedJournalTitle(from journalDate: String?) -> String {
+        guard
+            let journalDate,
+            let date = ISO8601DateFormatter().date(from: "\(journalDate)T12:00:00Z")
+        else {
+            return "DÍA ANTERIOR"
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_ES")
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: date).uppercased()
     }
 }
 

@@ -32,12 +32,18 @@ final class ProgressScreenViewModel: ObservableObject {
     // Emotion history
     @Published var emotionHistory: [EmotionHistoryItem] = []
 
+    // Diario data
+    @Published var journalSessions: [ChatSessionSummary] = []
+    @Published var isLoadingJournal = false
+    @Published var journalErrorMessage: String?
+
     // MARK: - Dependencies
 
     private let dailyBriefService: DailyBriefServiceProtocol
     private let emotionsService: EmotionsServiceProtocol
     private let userService: UserServiceProtocol
     private let healthDataProvider: HealthDataProviding
+    private let coachService: CoachServiceProtocol
 
     init() {
         if Self.isRunningInPreview {
@@ -45,12 +51,14 @@ final class ProgressScreenViewModel: ObservableObject {
             self.emotionsService = MockEmotionsService()
             self.userService = MockUserService()
             self.healthDataProvider = MockHealthDataProvider()
+            self.coachService = MockCoachService()
         } else {
             let client = APIClient()
             self.dailyBriefService = DailyBriefAPIService(apiClient: client)
             self.emotionsService = EmotionsAPIService(apiClient: client)
             self.userService = UserAPIService(apiClient: client)
             self.healthDataProvider = HealthKitHealthDataProvider(healthKitManager: HealthKitManager())
+            self.coachService = CoachAPIService(apiClient: client)
         }
     }
 
@@ -58,12 +66,14 @@ final class ProgressScreenViewModel: ObservableObject {
         dailyBriefService: DailyBriefServiceProtocol,
         emotionsService: EmotionsServiceProtocol,
         userService: UserServiceProtocol,
-        healthDataProvider: HealthDataProviding
+        healthDataProvider: HealthDataProviding,
+        coachService: CoachServiceProtocol
     ) {
         self.dailyBriefService = dailyBriefService
         self.emotionsService = emotionsService
         self.userService = userService
         self.healthDataProvider = healthDataProvider
+        self.coachService = coachService
     }
 
     // MARK: - Load Semana
@@ -241,6 +251,35 @@ final class ProgressScreenViewModel: ObservableObject {
             compassionateResponse = "Gracias por compartir cómo te sientes."
             Self.debugLog("POST /emotions/checkin failed: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Diario
+
+    func loadJournalData() async {
+        isLoadingJournal = true
+        journalErrorMessage = nil
+        defer { isLoadingJournal = false }
+
+        do {
+            let sessions = try await coachService.listChatSessions(sessionKind: .journal)
+            let sorted = sessions.sorted { lhs, rhs in
+                (lhs.journalDate ?? lhs.lastMessageAt ?? "") > (rhs.journalDate ?? rhs.lastMessageAt ?? "")
+            }
+            let today = sorted.filter(\.isToday)
+            let previous = sorted.filter { !$0.isToday }.prefix(3)
+            journalSessions = today + previous
+        } catch {
+            journalSessions = []
+            journalErrorMessage = "No pudimos cargar tu diario todavía."
+        }
+    }
+
+    var todayJournalSession: ChatSessionSummary? {
+        journalSessions.first(where: \.isToday)
+    }
+
+    var previousJournalSessions: [ChatSessionSummary] {
+        journalSessions.filter { !$0.isToday }
     }
 
     // MARK: - Health Summary (Semana)

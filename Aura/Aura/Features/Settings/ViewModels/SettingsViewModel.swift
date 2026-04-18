@@ -5,6 +5,9 @@ import Combine
 final class SettingsViewModel: ObservableObject {
     @Published var notificationsEnabled: Bool
     @Published var diagnosticsVisible: Bool
+    @Published private(set) var displayName = "Your account"
+    @Published private(set) var email = "No email available"
+    @Published private(set) var isLoadingProfile = false
     @Published private(set) var healthKitEnabled = false
     @Published private(set) var healthKitStatusText = "No conectado"
     @Published private(set) var availableGoals: [WellnessGoal] = WellnessGoal.predefined
@@ -13,28 +16,47 @@ final class SettingsViewModel: ObservableObject {
 
     private let appPreferences: AppPreferences
     private let healthKitManager: HealthKitManaging
+    private let userService: UserServiceProtocol
 
     init(appPreferences: AppPreferences) {
         self.appPreferences = appPreferences
         self.healthKitManager = HealthKitManager()
+        self.userService = UserAPIService(apiClient: APIClient())
         self.notificationsEnabled = appPreferences.notificationEnabled
         self.diagnosticsVisible = appPreferences.diagnosticsVisible
         self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
         if self.selectedGoalIDs.isEmpty {
             self.selectedGoalIDs = Set(WellnessGoal.predefined.prefix(2).map(\.id))
         }
+        hydrateCachedProfile()
         refreshHealthKitStatus()
     }
 
     init(appPreferences: AppPreferences, healthKitManager: HealthKitManaging) {
         self.appPreferences = appPreferences
         self.healthKitManager = healthKitManager
+        self.userService = UserAPIService(apiClient: APIClient())
         self.notificationsEnabled = appPreferences.notificationEnabled
         self.diagnosticsVisible = appPreferences.diagnosticsVisible
         self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
         if self.selectedGoalIDs.isEmpty {
             self.selectedGoalIDs = Set(WellnessGoal.predefined.prefix(2).map(\.id))
         }
+        hydrateCachedProfile()
+        refreshHealthKitStatus()
+    }
+
+    init(appPreferences: AppPreferences, healthKitManager: HealthKitManaging, userService: UserServiceProtocol) {
+        self.appPreferences = appPreferences
+        self.healthKitManager = healthKitManager
+        self.userService = userService
+        self.notificationsEnabled = appPreferences.notificationEnabled
+        self.diagnosticsVisible = appPreferences.diagnosticsVisible
+        self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
+        if self.selectedGoalIDs.isEmpty {
+            self.selectedGoalIDs = Set(WellnessGoal.predefined.prefix(2).map(\.id))
+        }
+        hydrateCachedProfile()
         refreshHealthKitStatus()
     }
 
@@ -67,6 +89,28 @@ final class SettingsViewModel: ObservableObject {
         case .notRequested:
             healthKitEnabled = false
             healthKitStatusText = "No conectado"
+        }
+    }
+
+    func loadProfile() async {
+        isLoadingProfile = true
+        defer { isLoadingProfile = false }
+
+        do {
+            let user = try await userService.getMe()
+            displayName = user.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? user.name!
+                : (appPreferences.cachedUserName ?? "Your account")
+            email = user.email?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? user.email!
+                : (appPreferences.userEmail ?? "No email available")
+            appPreferences.currentUserId = user.id
+            appPreferences.userEmail = user.email
+            if let name = user.name, !name.isEmpty {
+                appPreferences.cachedUserName = name
+            }
+        } catch {
+            hydrateCachedProfile()
         }
     }
 
@@ -127,5 +171,10 @@ final class SettingsViewModel: ObservableObject {
             selectedGoalIDs = storedIDs
         }
         goalSelectionErrorMessage = nil
+    }
+
+    private func hydrateCachedProfile() {
+        displayName = appPreferences.cachedUserName ?? "Your account"
+        email = appPreferences.userEmail ?? "No email available"
     }
 }

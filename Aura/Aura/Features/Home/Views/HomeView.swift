@@ -8,6 +8,8 @@ struct HomeView: View {
     @State private var cardAppeared = false
     @State private var lastCompletedId: String? = nil
     @State private var showRipple = false
+    @State private var selectionGlowActive = false
+    @State private var scrollOffset: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init() {
@@ -28,8 +30,15 @@ struct HomeView: View {
             FloatingOrbsView()
                 .opacity(0.6)
                 .ignoresSafeArea()
+                .offset(y: scrollOffset * -0.4) // Parallax depth
 
             ScrollView {
+                // Tracking scroll offset for parallax
+                GeometryReader { geo in
+                    Color.clear.preference(key: ScrollOffsetKey.self, value: geo.frame(in: .named("homeScroll")).minY)
+                }
+                .frame(height: 0)
+
                 VStack(alignment: .leading, spacing: AuraSpacing.large) {
                     // Header with streak
                     headerSection
@@ -95,12 +104,17 @@ struct HomeView: View {
             StreakCelebrationView(isActive: $viewModel.showStreakCelebration)
                 .allowsHitTesting(false)
         }
+        .coordinateSpace(name: "homeScroll")
+        .onPreferenceChange(ScrollOffsetKey.self) { value in
+            scrollOffset = value
+        }
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await viewModel.refreshData()
             withAnimation(reduceMotion ? .default : AuraAnimations.entrance) {
                 cardAppeared = true
             }
+            selectionGlowActive = true
         }
         .refreshable {
             await viewModel.refreshData()
@@ -162,17 +176,20 @@ struct HomeView: View {
                         } label: {
                             VStack(spacing: 8) {
                                 ZStack {
-                                    // Glow behind selected
+                                    // Liquid glow behind selected
                                     if isSelected {
                                         Circle()
-                                            .fill(colorForEmotion(emotion).opacity(0.25))
-                                            .frame(width: 60, height: 60)
-                                            .blur(radius: 8)
+                                            .fill(colorForEmotion(emotion).opacity(0.3))
+                                            .frame(width: 64, height: 64)
+                                            .blur(radius: 12)
+                                            .scaleEffect(selectionGlowActive ? 1.2 : 1.0)
+                                            .animation(AuraAnimations.breathe, value: selectionGlowActive)
                                     }
                                     Circle()
                                         .fill(isSelected ? colorForEmotion(emotion) : colorForEmotion(emotion).opacity(0.15))
                                         .frame(width: 48, height: 48)
-                                        .scaleEffect(isSelected ? 1.12 : 1.0)
+                                        .scaleEffect(isSelected ? 1.15 : 1.0)
+                                        .shadow(color: isSelected ? colorForEmotion(emotion).opacity(0.4) : .clear, radius: 10, y: 5)
                                         .overlay(
                                             Text(String(emotion.prefix(1)).uppercased())
                                                 .font(.headline)
@@ -208,6 +225,8 @@ struct HomeView: View {
                     .foregroundStyle(selectedEmotion != nil ? .white : AuraColors.textSecondary)
                     .clipShape(Capsule())
             }
+            .scaleEffect(selectedEmotion != nil ? (selectionGlowActive ? 1.02 : 1.0) : 1.0)
+            .animation(selectedEmotion != nil ? AuraAnimations.breathe : .default, value: selectionGlowActive)
             .disabled(selectedEmotion == nil)
         }
         .padding(AuraSpacing.large)
@@ -363,6 +382,8 @@ struct HomeView: View {
                     .background(completed ? AuraColors.primary.opacity(0.5) : Color(hex: "#0F172A"))
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
+                    .scaleEffect(!completed && selectionGlowActive ? 1.02 : 1.0)
+                    .animation(!completed ? AuraAnimations.breathe : .default, value: selectionGlowActive)
             }
             .rippleOnTap(trigger: lastCompletedId == action.id && showRipple)
             .padding(.horizontal, AuraSpacing.large)
@@ -380,58 +401,53 @@ struct HomeView: View {
     // MARK: - Action Card
 
     private func actionCard(action: MicroAction, index: Int, isCompleted: Bool) -> some View {
-        HStack(spacing: AuraSpacing.medium) {
-            ZStack {
-                Circle()
-                    .fill(AuraColors.surfaceMuted)
-                    .frame(width: 40, height: 40)
-                Image(systemName: iconForCategory(action.category))
-                    .foregroundStyle(AuraColors.primary)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(action.title)
-                    .font(AuraTypography.bodyStrong)
-                    .foregroundStyle(AuraColors.textPrimary)
-                Text(action.description)
-                    .font(AuraTypography.footnote)
-                    .foregroundStyle(AuraColors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer()
-
-            Button {
-                withAnimation(AuraAnimations.calm) {
-                    viewModel.toggleActionCompletion(action.id)
-                }
-            } label: {
+        SwipeableActionView(isCompleted: isCompleted) {
+            viewModel.toggleActionCompletion(action.id)
+        } content: {
+            HStack(spacing: AuraSpacing.medium) {
                 ZStack {
                     Circle()
-                        .fill(isCompleted ? AuraColors.primary : .clear)
-                        .overlay(
-                            Circle()
-                                .stroke(isCompleted ? AuraColors.primary : AuraColors.cardStroke, lineWidth: 2)
-                        )
-                        .frame(width: 28, height: 28)
+                        .fill(AuraColors.surfaceMuted)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: iconForCategory(action.category))
+                        .foregroundStyle(AuraColors.primary)
+                }
 
-                    if isCompleted {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.title)
+                        .font(AuraTypography.bodyStrong)
+                        .foregroundStyle(AuraColors.textPrimary)
+                    Text(action.description)
+                        .font(AuraTypography.footnote)
+                        .foregroundStyle(AuraColors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+                
+                if isCompleted {
+                    ZStack {
+                        Circle()
+                            .fill(AuraColors.primary)
+                            .frame(width: 28, height: 28)
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.white)
-                            .scaleEffect(isCompleted ? 1.0 : 0.5)
                     }
+                } else {
+                    // Swipe indicator
+                    HStack(spacing: 2) {
+                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.right")
+                            .opacity(0.5)
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AuraColors.cardStroke)
+                    .padding(.trailing, 8)
                 }
             }
-            .buttonStyle(.plain)
+            .padding(AuraSpacing.large)
         }
-        .padding(AuraSpacing.large)
-        .background(AuraColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.large))
-        .overlay(
-            RoundedRectangle(cornerRadius: AuraCorners.large)
-                .stroke(AuraColors.cardStroke.opacity(0.3), lineWidth: 1)
-        )
     }
 
     // MARK: - Helpers
@@ -474,6 +490,14 @@ struct HomeView: View {
         .padding(.vertical, 8)
         .background(AuraColors.surface.opacity(0.9))
         .clipShape(Capsule())
+    }
+}
+
+// MARK: - Handlers
+struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value += nextValue()
     }
 }
 

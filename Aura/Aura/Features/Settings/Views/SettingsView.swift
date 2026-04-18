@@ -140,6 +140,7 @@ struct SettingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task {
             viewModel.refreshHealthKitStatus()
+            await viewModel.loadProfile()
         }
         .sheet(isPresented: $isShowingGoalsSheet) {
             WellnessGoalsSelectionSheet(viewModel: viewModel)
@@ -164,10 +165,10 @@ struct SettingsView: View {
                 )
 
             VStack(alignment: .leading, spacing: AuraSpacing.xSmall) {
-                Text("Edu García")
+                Text(viewModel.displayName)
                     .font(AuraTypography.headline)
                     .foregroundStyle(AuraColors.textPrimary)
-                Text("edu@gmail.com")
+                Text(viewModel.email)
                     .font(AuraTypography.body)
                     .foregroundStyle(AuraColors.textSecondary)
                 Text("✦ Plan Premium")
