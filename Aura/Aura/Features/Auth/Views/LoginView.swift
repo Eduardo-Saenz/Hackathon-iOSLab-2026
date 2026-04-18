@@ -1,5 +1,7 @@
 import SwiftUI
+#if ENABLE_SIGN_IN_WITH_APPLE
 import AuthenticationServices
+#endif
 
 @MainActor
 struct LoginView: View {
@@ -85,7 +87,7 @@ struct LoginView: View {
 
                         dividerRow
 
-                        // Apple Sign In
+                        #if ENABLE_SIGN_IN_WITH_APPLE
                         SignInWithAppleButton(
                             .continue,
                             onRequest: { request in
@@ -100,6 +102,9 @@ struct LoginView: View {
                         .signInWithAppleButtonStyle(.black)
                         .frame(height: 50)
                         .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                        #else
+                        // Desactivado: requiere Apple Developer Program para capability en dispositivo.
+                        #endif
 
                         // Google Sign In
                         Button {
