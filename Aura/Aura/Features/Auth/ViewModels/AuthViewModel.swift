@@ -155,7 +155,7 @@ final class AuthViewModel: ObservableObject {
     func signOut() async {
         await authService.signOut()
         appPreferences.isAuthenticated = false
-        appPreferences.hasCompletedOnboarding = false
+        appPreferences.clearUserScopedState()
     }
 
     // MARK: - Validation

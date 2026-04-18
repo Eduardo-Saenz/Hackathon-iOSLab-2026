@@ -36,7 +36,7 @@ struct GoalSelectionView: View {
                         personalInfoStep
                             .transition(
                                 .asymmetric(
-                                    insertion: .move(edge: .leading).combined(with: .opacity),
+                                    insertion: .move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.95)),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 )
                             )
@@ -44,7 +44,7 @@ struct GoalSelectionView: View {
                         goalsStep
                             .transition(
                                 .asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    insertion: .move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.95)),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 )
                             )
@@ -52,7 +52,7 @@ struct GoalSelectionView: View {
                         toneStep
                             .transition(
                                 .asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    insertion: .move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.95)),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 )
                             )
@@ -111,13 +111,27 @@ struct GoalSelectionView: View {
     // MARK: - Step Pill
 
     private var stepPill: some View {
-        Text("PASO \(currentStep) DE 3")
-            .font(AuraTypography.caption)
-            .foregroundStyle(AuraColors.primary)
-            .padding(.horizontal, AuraSpacing.medium)
-            .padding(.vertical, AuraSpacing.small)
-            .background(AuraColors.pillBackground)
-            .clipShape(Capsule())
+        HStack(spacing: AuraSpacing.medium) {
+            Text("PASO \(currentStep) DE 3")
+                .font(AuraTypography.caption)
+                .foregroundStyle(AuraColors.primary)
+                .animation(nil, value: currentStep)
+            
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AuraColors.primary.opacity(0.2))
+                    Capsule()
+                        .fill(AuraColors.primary)
+                        .frame(width: geo.size.width * CGFloat(currentStep) / 3.0)
+                        .animation(AuraAnimations.liquidSpring, value: currentStep)
+                }
+            }
+            .frame(width: 80, height: 6)
+        }
+        .padding(.horizontal, AuraSpacing.medium)
+        .padding(.vertical, AuraSpacing.small)
+        .background(AuraColors.pillBackground)
+        .clipShape(Capsule())
     }
 
     // MARK: - Step 1
@@ -391,11 +405,13 @@ struct GoalSelectionView: View {
     }
 
     private func submitOnboarding() async {
-        await viewModel.completeOnboarding(
+        let completed = await viewModel.completeOnboarding(
             name: resolvedFullName.isEmpty ? nil : resolvedFullName,
             preferredTone: selectedTone?.apiValue
         )
-        onContinue()
+        if completed {
+            onContinue()
+        }
     }
 }
 

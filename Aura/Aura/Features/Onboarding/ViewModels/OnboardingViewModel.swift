@@ -41,16 +41,10 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     /// Saves locally and syncs profile to backend.
-    func completeOnboarding(name: String?, preferredTone: String?) async {
+    @discardableResult
+    func completeOnboarding(name: String?, preferredTone: String?) async -> Bool {
         isSyncing = true
         defer { isSyncing = false }
-
-        // Save locally first
-        appPreferences.selectedGoalIDs = Array(selectedGoalIDs)
-        appPreferences.hasCompletedOnboarding = true
-        if let name, !name.isEmpty {
-            appPreferences.cachedUserName = name
-        }
 
         // Sync to backend (best-effort)
         let mappedGoals = GoalMapping.mapGoals(Array(selectedGoalIDs))
@@ -64,14 +58,23 @@ final class OnboardingViewModel: ObservableObject {
         )
 
         do {
-            _ = try await userService.patchMe(body)
+            let user = try await userService.patchMe(body)
+            appPreferences.selectedGoalIDs = Array(selectedGoalIDs)
+            appPreferences.hasCompletedOnboarding = user.onboardingCompleted
+            appPreferences.currentUserId = user.id
+            appPreferences.userEmail = user.email
+            if let cachedName = user.name ?? name, !cachedName.isEmpty {
+                appPreferences.cachedUserName = cachedName
+            }
             #if DEBUG
             print("🎓 Onboarding PATCH /users/me OK")
             #endif
+            return true
         } catch {
             #if DEBUG
             print("🎓 Onboarding PATCH /users/me failed: \(error.localizedDescription)")
             #endif
+            return false
         }
     }
 

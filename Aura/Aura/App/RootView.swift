@@ -12,35 +12,38 @@ struct RootView: View {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
+    @State private var splashFinished = false
+
     var body: some View {
-        Group {
-            if viewModel.isCheckingSession {
-                // Brief splash while validating stored session
-                ZStack {
-                    AuraColors.background.ignoresSafeArea()
-                    VStack(spacing: AuraSpacing.medium) {
-                        Text("Aura")
-                            .font(AuraTypography.hero)
-                            .foregroundStyle(AuraColors.textPrimary)
-                        ProgressView()
-                            .tint(AuraColors.primary)
+        ZStack {
+            if !splashFinished || viewModel.isCheckingSession {
+                AuraSplashView {
+                    withAnimation(AuraAnimations.silkTransition) {
+                        splashFinished = true
                     }
                 }
-            } else {
-                switch viewModel.route {
-                case .auth:
-                    LoginView {
-                        viewModel.handleAuthSuccess()
-                    }
-                case .onboarding:
-                    GoalSelectionView {
-                        viewModel.handleOnboardingComplete()
-                    }
-                case .mainTabs:
-                    RootTabView {
-                        viewModel.signOut()
+                .transition(.opacity)
+                .zIndex(1)
+            }
+            
+            if splashFinished && !viewModel.isCheckingSession {
+                Group {
+                    switch viewModel.route {
+                    case .auth:
+                        LoginView {
+                            viewModel.handleAuthSuccess()
+                        }
+                    case .onboarding:
+                        GoalSelectionView {
+                            viewModel.handleOnboardingComplete()
+                        }
+                    case .mainTabs:
+                        RootTabView {
+                            viewModel.signOut()
+                        }
                     }
                 }
+                .transition(.asymmetric(insertion: .identity, removal: .opacity))
             }
         }
         .task {

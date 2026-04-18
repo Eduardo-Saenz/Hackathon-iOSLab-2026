@@ -67,23 +67,27 @@ struct LoginView: View {
                                 await viewModel.signInWithEmail(email: email, password: password)
                             }
                         } label: {
-                            Group {
+                            ZStack {
                                 if viewModel.isLoading {
                                     ProgressView()
                                         .tint(.white)
+                                        .transition(.scale.combined(with: .opacity))
                                 } else {
                                     Text(viewModel.isSignUpMode ? "Crear Cuenta" : "Iniciar Sesión")
+                                        .font(AuraTypography.bodyStrong)
+                                        .transition(.scale.combined(with: .opacity))
                                 }
                             }
-                            .font(AuraTypography.bodyStrong)
                             .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AuraSpacing.medium)
+                            .frame(maxWidth: viewModel.isLoading ? 54 : .infinity)
+                            .frame(height: 54)
                             .background(AuraColors.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                            .clipShape(RoundedRectangle(cornerRadius: viewModel.isLoading ? 27 : AuraCorners.medium))
                             .shadow(color: AuraColors.primary.opacity(0.3), radius: 8, y: 4)
                         }
                         .disabled(viewModel.isLoading)
+                        .animation(AuraAnimations.liquidSpring, value: viewModel.isLoading)
+                        .animation(AuraAnimations.liquidSpring, value: viewModel.isSignUpMode)
 
                         dividerRow
 
