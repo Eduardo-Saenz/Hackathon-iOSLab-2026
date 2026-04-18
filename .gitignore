@@ -1,3 +1,6 @@
+logs/
+generate_diff.py
+
 # macOS
 .DS_Store
 
@@ -37,3 +40,6 @@ playground.xcworkspace
 
 # Local assistant instructions
 AGENTS.md
+
+# Google OAuth (copy GoogleService-Info.plist.example → GoogleService-Info.plist locally)
+Aura/Aura/GoogleService-Info.plist
