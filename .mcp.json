@@ -6,6 +6,14 @@
       "headers": {
         "Authorization": "Bearer ${GITHUB_PAT}"
       }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "xcode-tools": {
+      "command": "xcrun",
+      "args": ["mcpbridge"]
     }
   }
 }
