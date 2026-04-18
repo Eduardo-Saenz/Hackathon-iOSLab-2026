@@ -16,7 +16,7 @@ El flujo principal se controla desde `AppFlowViewModel` y `RootView`:
 - `mainTabs`: abre la experiencia principal con tabs.
 
 ## Módulos principales
-- `Features/Auth`: email/contraseña, Sign in with Apple y Google (GoogleSignIn SPM) contra AuraBE.
+- `Features/Auth`: email/contraseña, Google (GoogleSignIn SPM) y Sign in with Apple (opcional, desactivado por defecto; ver abajo) contra AuraBE.
 - `Features/Onboarding`: selección de objetivos de bienestar.
 - `Features/Home`: resumen diario, estado de salud y microacciones.
 - `Features/Progress`: progreso semanal, tendencias y logros.
@@ -47,7 +47,7 @@ El flujo principal se controla desde `AppFlowViewModel` y `RootView`:
 2. **Simulador**: por defecto la app usa `http://localhost:3000`. Opcional: en *Product → Scheme → Edit Scheme → Run → Environment Variables* define `API_BASE_URL` si el API no está en localhost.
 3. **Email / contraseña**: pestaña *Crear Cuenta* o *Iniciar Sesión*; mínimo 6 caracteres en la contraseña.
 4. **Google**: en el target *Aura* (Build Settings), sustituye `GOOGLE_REVERSED_CLIENT_ID` por el valor *Reversed client ID* de tu cliente OAuth iOS en Google Cloud (debe coincidir con el prefijo de tu `GOOGLE_CLIENT_ID`). Opcional: copia `Aura/Aura/GoogleService-Info.plist.example` a `Aura/Aura/GoogleService-Info.plist` y rellena `CLIENT_ID` / `REVERSED_CLIENT_ID` (el plist real está en `.gitignore`).
-5. **Apple**: en **dispositivo real** con capability *Sign In with Apple*; en simulador el flujo puede ser limitado según Xcode/iOS.
+5. **Sign in with Apple (desactivado por defecto)**: el hackathon suele usar cuentas sin Apple Developer Program de pago; el botón y la lógica siguen en el código pero compilación condicional `ENABLE_SIGN_IN_WITH_APPLE` está apagada, y `Aura.entitlements` no incluye `com.apple.developer.applesignin`, para poder instalar en dispositivo sin esa capability. Si Xcode aún muestra la capability *Sign In with Apple* en el target, quítala manualmente en *Signing & Capabilities* (el proyecto no lista capacidades aparte del plist de entitlements). **Para reactivarlo más adelante**: (1) en el target *Aura* → *Build Settings* → *Swift Compiler – Active Compilation Conditions*, añade `ENABLE_SIGN_IN_WITH_APPLE`; (2) en `Aura/Aura.entitlements` vuelve a añadir la entrada `com.apple.developer.applesignin` → `Default` (como en commits anteriores o en la documentación de Apple); (3) en *Signing & Capabilities* añade *Sign In with Apple* y un Team de pago; (4) backend con `APPLE_BUNDLE_ID` coherente con el bundle ID de la app.
 
 ### MCP (Cursor) en este repo
 

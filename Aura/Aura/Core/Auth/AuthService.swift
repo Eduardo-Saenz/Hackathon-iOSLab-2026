@@ -1,5 +1,7 @@
 import Foundation
+#if ENABLE_SIGN_IN_WITH_APPLE
 import AuthenticationServices
+#endif
 
 // MARK: - Response Models
 
@@ -39,6 +41,7 @@ final class AuthService {
 
     // MARK: - Apple Sign In
 
+    #if ENABLE_SIGN_IN_WITH_APPLE
     func loginWithApple(credential: ASAuthorizationAppleIDCredential) async throws {
         guard let tokenData = credential.identityToken,
               let identityToken = String(data: tokenData, encoding: .utf8) else {
@@ -49,6 +52,7 @@ final class AuthService {
         let tokens: AuthTokenResponse = try await post(path: "/auth/apple", body: body)
         storeTokens(tokens)
     }
+    #endif
 
     // MARK: - Google Sign In
 

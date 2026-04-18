@@ -1,6 +1,8 @@
 import Foundation
 import Combine
+#if ENABLE_SIGN_IN_WITH_APPLE
 import AuthenticationServices
+#endif
 import UIKit
 import GoogleSignIn
 
@@ -45,6 +47,7 @@ final class AuthViewModel: ObservableObject {
 
     // MARK: - Apple Sign In
 
+    #if ENABLE_SIGN_IN_WITH_APPLE
     func handleAppleSignIn(result: Result<ASAuthorization, Error>) async {
         isLoading = true
         errorMessage = nil
@@ -79,6 +82,7 @@ final class AuthViewModel: ObservableObject {
 
         isLoading = false
     }
+    #endif
 
     // MARK: - Google Sign In
 
