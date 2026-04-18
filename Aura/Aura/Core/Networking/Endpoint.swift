@@ -24,4 +24,13 @@ extension Endpoint {
             body: body
         )
     }
+
+    static func chat(body: Data) -> Endpoint {
+        Endpoint(
+            path: "/chat",
+            method: .post,
+            headers: [:],
+            body: body
+        )
+    }
 }

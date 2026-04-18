@@ -38,8 +38,29 @@ struct CoachView: View {
                             .padding(.top, AuraSpacing.small)
                     }
 
-                    ForEach(viewModel.messages) { message in
-                        messageRow(message)
+                    if viewModel.messages.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(viewModel.messages) { message in
+                            messageRow(message)
+                        }
+                    }
+
+                    if viewModel.isLoading {
+                        ProgressView("Coach escribiendo...")
+                            .font(AuraTypography.footnote)
+                            .foregroundStyle(AuraColors.textSecondary)
+                            .padding(.top, AuraSpacing.small)
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        errorBanner(errorMessage)
+                    }
+
+                    if viewModel.usedBackendInLastResponse,
+                       let grounded = viewModel.lastResponseGrounded,
+                       let disclaimer = viewModel.lastResponseDisclaimer {
+                        backendDebugBanner(grounded: grounded, disclaimer: disclaimer)
                     }
                 }
                 .padding(.vertical, AuraSpacing.medium)
@@ -96,7 +117,7 @@ struct CoachView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(!canSendDraft)
+                    .disabled(!canSendDraft || viewModel.isLoading)
                 }
                 .padding(.horizontal, AuraSpacing.medium)
                 .padding(.bottom, AuraSpacing.medium)
@@ -114,6 +135,19 @@ struct CoachView: View {
 
     private var canSendDraft: Bool {
         !viewModel.draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: AuraSpacing.small) {
+            Image(systemName: "bubble.left.and.text.bubble.right")
+                .font(.system(size: 28))
+                .foregroundStyle(AuraColors.textSecondary)
+            Text("Empieza una conversación con tu coach")
+                .font(AuraTypography.bodyStrong)
+                .foregroundStyle(AuraColors.textPrimary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, AuraSpacing.large)
     }
 
     private var header: some View {
@@ -207,6 +241,50 @@ struct CoachView: View {
                 .font(AuraTypography.caption)
                 .foregroundStyle(AuraColors.textSecondary)
         }
+        .padding(.horizontal, AuraSpacing.medium)
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.small) {
+            Text("No se pudo enviar el mensaje")
+                .font(AuraTypography.footnote)
+                .foregroundStyle(.red)
+            Text(message)
+                .font(AuraTypography.mini)
+                .foregroundStyle(AuraColors.textSecondary)
+            Button("Reintentar") {
+                viewModel.retryLastMessage()
+            }
+            .font(AuraTypography.footnote)
+            .foregroundStyle(AuraColors.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AuraSpacing.medium)
+        .background(AuraColors.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+        .padding(.horizontal, AuraSpacing.medium)
+    }
+
+    private func backendDebugBanner(grounded: Bool, disclaimer: String) -> some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.xSmall) {
+            Text("Backend chat activo")
+                .font(AuraTypography.mini)
+                .foregroundStyle(AuraColors.primary)
+            Text("Grounded: \(grounded ? "sí" : "no")")
+                .font(AuraTypography.mini)
+                .foregroundStyle(AuraColors.textSecondary)
+            Text(disclaimer)
+                .font(AuraTypography.mini)
+                .foregroundStyle(AuraColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AuraSpacing.medium)
+        .background(AuraColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AuraCorners.medium)
+                .stroke(AuraColors.cardStroke.opacity(0.5), lineWidth: 1)
+        )
         .padding(.horizontal, AuraSpacing.medium)
     }
 
