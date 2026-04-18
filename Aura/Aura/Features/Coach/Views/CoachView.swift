@@ -11,12 +11,23 @@ struct CoachView: View {
 
     init() {
         self.entryMessage = nil
-        _viewModel = StateObject(wrappedValue: CoachViewModel())
+        _viewModel = StateObject(wrappedValue: CoachViewModel(sessionKind: .general))
     }
 
     init(entryMessage: String?) {
         self.entryMessage = entryMessage
-        _viewModel = StateObject(wrappedValue: CoachViewModel())
+        _viewModel = StateObject(wrappedValue: CoachViewModel(sessionKind: .journal))
+    }
+
+    init(entryMessage: String?, sessionId: String?, isReadOnly: Bool) {
+        self.entryMessage = entryMessage
+        _viewModel = StateObject(
+            wrappedValue: CoachViewModel(
+                initialSessionId: sessionId,
+                sessionKind: .journal,
+                isReadOnly: isReadOnly
+            )
+        )
     }
 
     init(viewModel: CoachViewModel, entryMessage: String? = nil) {
@@ -67,7 +78,9 @@ struct CoachView: View {
                         errorBanner(errorMessage)
                     }
 
-                       
+                    if let readOnlyNotice = viewModel.readOnlyNotice {
+                        readOnlyBanner(readOnlyNotice)
+                    }
                 }
                 .padding(.vertical, AuraSpacing.medium)
             }
@@ -120,6 +133,7 @@ struct CoachView: View {
                         .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
                         .lineLimit(1...4)
                         .focused($isTextFieldFocused)
+                        .disabled(viewModel.isReadOnly)
 
                     Button {
                         withAnimation(.spring(response: 0.15, dampingFraction: 0.5)) {
@@ -146,7 +160,7 @@ struct CoachView: View {
                             .scaleEffect(sendButtonScale)
                     }
                     .buttonStyle(.plain)
-                    .disabled(!canSendDraft || viewModel.isLoading)
+                    .disabled(!canSendDraft || viewModel.isLoading || viewModel.isReadOnly)
                 }
                 .padding(.horizontal, AuraSpacing.medium)
                 .padding(.bottom, AuraSpacing.medium)
@@ -159,6 +173,9 @@ struct CoachView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             applyEntryMessageIfNeeded()
+        }
+        .task {
+            await viewModel.loadInitialSessionIfNeeded()
         }
     }
 
@@ -294,10 +311,27 @@ struct CoachView: View {
         .padding(.horizontal, AuraSpacing.medium)
     }
 
+    private func readOnlyBanner(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.small) {
+            Text("Entrada cerrada")
+                .font(AuraTypography.footnote)
+                .foregroundStyle(AuraColors.primary)
+            Text(message)
+                .font(AuraTypography.mini)
+                .foregroundStyle(AuraColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AuraSpacing.medium)
+        .background(AuraColors.surfaceMuted)
+        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+        .padding(.horizontal, AuraSpacing.medium)
+    }
+
     private func applyEntryMessageIfNeeded() {
         guard !didApplyEntryMessage else { return }
         didApplyEntryMessage = true
 
+        guard !viewModel.isReadOnly else { return }
         guard let entryMessage else { return }
         let trimmed = entryMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }

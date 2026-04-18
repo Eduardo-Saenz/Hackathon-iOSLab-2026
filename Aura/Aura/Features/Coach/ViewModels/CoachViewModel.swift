@@ -10,14 +10,7 @@ struct CoachMessage: Identifiable {
 
 @MainActor
 final class CoachViewModel: ObservableObject {
-    @Published var messages: [CoachMessage] = [
-        CoachMessage(
-            id: UUID(),
-            text: "Hola, soy tu Coach AI. Estoy listo para ayudarte con acciones concretas para hoy.",
-            isFromUser: false,
-            time: "09:01"
-        )
-    ]
+    @Published var messages: [CoachMessage] = []
     @Published var quickReplies: [String] = [
         "Tengo poca energía hoy",
         "¿Qué hago para dormir mejor?"
@@ -29,14 +22,19 @@ final class CoachViewModel: ObservableObject {
     @Published var lastResponseDisclaimer: String?
     @Published var usedBackendInLastResponse = false
     @Published var sessionId: String?
+    @Published var isReadOnly = false
+    @Published var readOnlyNotice: String?
+    @Published var journalDate: String?
 
     private let coachService: CoachServiceProtocol
     private let healthDataProvider: HealthDataProviding
     private let appPreferences: AppPreferences
     private let maxHistoryToSend = 12
     private let isRuntimeService: Bool
+    private let preferredSessionKind: ChatSessionKind
 
     private var lastFailedUserMessage: String?
+    private var hasLoadedInitialSession = false
 
     init() {
         if Self.isRunningInPreview {
@@ -51,10 +49,14 @@ final class CoachViewModel: ObservableObject {
             self.appPreferences = .shared
             self.isRuntimeService = true
         }
-        self.sessionId = appPreferences.chatSessionId
+        self.preferredSessionKind = .general
+        seedWelcomeMessageIfNeeded()
     }
 
     init(
+        initialSessionId: String? = nil,
+        sessionKind: ChatSessionKind,
+        isReadOnly: Bool,
         coachService: CoachServiceProtocol,
         healthDataProvider: HealthDataProviding,
         appPreferences: AppPreferences,
@@ -64,11 +66,86 @@ final class CoachViewModel: ObservableObject {
         self.healthDataProvider = healthDataProvider
         self.appPreferences = appPreferences
         self.isRuntimeService = isRuntimeService
+        self.preferredSessionKind = sessionKind
+        self.isReadOnly = isReadOnly
+        if sessionKind == .journal {
+            self.sessionId = initialSessionId ?? appPreferences.chatSessionId
+        } else {
+            self.sessionId = initialSessionId
+        }
+        if isReadOnly {
+            self.readOnlyNotice = "This journal entry is from a previous day. Continue writing in today's journal."
+        }
+        seedWelcomeMessageIfNeeded()
+    }
+
+    convenience init(
+        initialSessionId: String? = nil,
+        sessionKind: ChatSessionKind = .general,
+        isReadOnly: Bool = false
+    ) {
+        if Self.isRunningInPreview {
+            self.init(
+                initialSessionId: initialSessionId,
+                sessionKind: sessionKind,
+                isReadOnly: isReadOnly,
+                coachService: MockCoachService(),
+                healthDataProvider: MockHealthDataProvider(),
+                appPreferences: .shared,
+                isRuntimeService: false
+            )
+        } else {
+            let manager = HealthKitManager()
+            self.init(
+                initialSessionId: initialSessionId,
+                sessionKind: sessionKind,
+                isReadOnly: isReadOnly,
+                coachService: CoachAPIService(apiClient: APIClient()),
+                healthDataProvider: HealthKitHealthDataProvider(healthKitManager: manager),
+                appPreferences: .shared,
+                isRuntimeService: true
+            )
+        }
+    }
+
+    func loadInitialSessionIfNeeded() async {
+        guard !hasLoadedInitialSession else { return }
+        hasLoadedInitialSession = true
+
+        guard let sessionId else {
+            seedWelcomeMessageIfNeeded()
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let response = try await coachService.getChatSessionMessages(sessionId: sessionId)
+            applySessionMetadata(response.session)
+            let restored = response.messages.map { message in
+                CoachMessage(
+                    id: UUID(uuidString: message.id) ?? UUID(),
+                    text: message.content,
+                    isFromUser: message.role == .user,
+                    time: Self.timeString(from: message.createdAt)
+                )
+            }
+            messages = restored
+            seedWelcomeMessageIfNeeded()
+        } catch {
+            self.errorMessage = error.localizedDescription
+            if preferredSessionKind == .journal {
+                self.sessionId = nil
+                appPreferences.chatSessionId = nil
+            }
+            seedWelcomeMessageIfNeeded()
+        }
     }
 
     func sendDraft() {
         let trimmed = draftMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isLoading else { return }
+        guard !trimmed.isEmpty, !isLoading, !isReadOnly else { return }
 
         draftMessage = ""
         Task {
@@ -77,7 +154,7 @@ final class CoachViewModel: ObservableObject {
     }
 
     func retryLastMessage() {
-        guard let lastFailedUserMessage, !isLoading else { return }
+        guard let lastFailedUserMessage, !isLoading, !isReadOnly else { return }
         Task {
             await sendMessage(lastFailedUserMessage)
         }
@@ -95,14 +172,21 @@ final class CoachViewModel: ObservableObject {
         let healthContext = await buildHealthContext()
 
         do {
-            let response = try await coachService.sendChat(messages: payloadMessages, healthContext: healthContext, sessionId: sessionId)
+            let response = try await coachService.sendChat(
+                messages: payloadMessages,
+                healthContext: healthContext,
+                sessionId: sessionId,
+                sessionKind: preferredSessionKind
+            )
             appendMessage(response.message, isFromUser: false)
             lastResponseGrounded = response.grounded
             lastResponseDisclaimer = response.disclaimer
             usedBackendInLastResponse = isRuntimeService
             if let newSessionId = response.sessionId {
                 sessionId = newSessionId
-                appPreferences.chatSessionId = newSessionId
+                if preferredSessionKind == .journal {
+                    appPreferences.chatSessionId = newSessionId
+                }
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -150,6 +234,32 @@ final class CoachViewModel: ObservableObject {
         }
         return GoalMapping.mapGoals(WellnessGoal.predefined.prefix(3).map(\.id))
     }
+
+    private func applySessionMetadata(_ metadata: ChatSessionMetadata) {
+        sessionId = metadata.id
+        journalDate = metadata.journalDate
+        isReadOnly = !metadata.isWritable
+        if preferredSessionKind == .journal {
+            appPreferences.chatSessionId = metadata.isWritable ? metadata.id : nil
+        }
+        if !metadata.isWritable {
+            readOnlyNotice = "This journal entry is from a previous day. Continue writing in today's journal."
+        } else {
+            readOnlyNotice = nil
+        }
+    }
+
+    private func seedWelcomeMessageIfNeeded() {
+        guard messages.isEmpty else { return }
+        messages = [
+            CoachMessage(
+                id: UUID(),
+                text: "Hola, soy tu Coach AI. Estoy listo para ayudarte con acciones concretas para hoy.",
+                isFromUser: false,
+                time: Self.timeFormatter.string(from: Date())
+            )
+        ]
+    }
 }
 
 private extension CoachViewModel {
@@ -164,4 +274,14 @@ private extension CoachViewModel {
         formatter.dateStyle = .none
         return formatter
     }()
+
+    static func timeString(from isoDate: String?) -> String {
+        guard
+            let isoDate,
+            let date = ISO8601DateFormatter().date(from: isoDate)
+        else {
+            return timeFormatter.string(from: Date())
+        }
+        return timeFormatter.string(from: date)
+    }
 }
