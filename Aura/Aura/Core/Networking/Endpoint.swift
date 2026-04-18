@@ -85,7 +85,13 @@ extension Endpoint {
 
     // MARK: - Chat Sessions
 
-    static let chatSessions = Endpoint(path: "/chat/sessions", method: .get)
+    static func chatSessions(kind: ChatSessionKind? = nil) -> Endpoint {
+        Endpoint(
+            path: "/chat/sessions",
+            method: .get,
+            queryItems: kind.map { [URLQueryItem(name: "session_kind", value: $0.rawValue)] } ?? []
+        )
+    }
 
     static func chatSessionMessages(sessionId: String) -> Endpoint {
         Endpoint(path: "/chat/sessions/\(sessionId)/messages", method: .get)

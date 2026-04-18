@@ -12,11 +12,12 @@ struct TypingDotsView: View {
         HStack(spacing: dotSpacing) {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
-                    .fill(AuraColors.textSecondary.opacity(activeDot == index ? 0.8 : 0.3))
+                    .fill(AuraColors.primary.opacity(activeDot == index ? 0.9 : 0.3))
                     .frame(width: dotSize, height: dotSize)
-                    .scaleEffect(activeDot == index ? 1.0 : 0.6)
+                    .scaleEffect(activeDot == index ? 1.4 : 0.8)
+                    .offset(y: activeDot == index ? -4 : 0)
                     .animation(
-                        reduceMotion ? .default : .spring(response: 0.35, dampingFraction: 0.6),
+                        reduceMotion ? .default : .spring(response: 0.45, dampingFraction: 0.5),
                         value: activeDot
                     )
             }

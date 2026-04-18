@@ -41,6 +41,9 @@ enum PreviewMocks {
 
     static func coachViewModel() -> CoachViewModel {
         CoachViewModel(
+            initialSessionId: nil,
+            sessionKind: .journal,
+            isReadOnly: false,
             coachService: coachService,
             healthDataProvider: healthDataProvider,
             appPreferences: appPreferences(),
@@ -53,7 +56,8 @@ enum PreviewMocks {
             dailyBriefService: dailyBriefService,
             emotionsService: emotionsService,
             userService: userService,
-            healthDataProvider: healthDataProvider
+            healthDataProvider: healthDataProvider,
+            coachService: coachService
         )
     }
 

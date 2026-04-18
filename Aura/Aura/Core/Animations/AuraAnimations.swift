@@ -23,4 +23,16 @@ enum AuraAnimations {
 
     /// Soft glow pulse for selections.
     static let glowPulse = Animation.easeInOut(duration: 0.6)
+
+    /// Specialized curve for path drawing (logo).
+    static let logoDrawing = Animation.easeInOut(duration: 1.5)
+
+    /// Ultra-smooth spring for shared element transitions.
+    static let silkTransition = Animation.spring(response: 0.8, dampingFraction: 0.85)
+
+    /// A heavy, highly damped spring that feels like dragging through fluid. Ideal for structural gestures.
+    static let liquidSpring = Animation.spring(response: 0.8, dampingFraction: 0.95, blendDuration: 0.1)
+    
+    /// Snappy but grounded spring for finalizing swipe-to-complete actions.
+    static let cardSnap = Animation.spring(response: 0.4, dampingFraction: 0.8)
 }

@@ -14,6 +14,7 @@ final class AppPreferences {
         static let completedActionIDs = "progress.completedActionIDs"
         static let completedActionIDsDate = "progress.completedActionIDsDate"
         static let userEmail = "auth.userEmail"
+        static let currentUserId = "auth.currentUserId"
         static let chatSessionId = "chat.sessionId"
         static let cachedUserName = "user.cachedName"
         static let actionSessionId = "actions.sessionId"
@@ -90,6 +91,11 @@ final class AppPreferences {
         set { defaults.set(newValue, forKey: Keys.userEmail) }
     }
 
+    var currentUserId: String? {
+        get { defaults.string(forKey: Keys.currentUserId) }
+        set { defaults.set(newValue, forKey: Keys.currentUserId) }
+    }
+
     var chatSessionId: String? {
         get { defaults.string(forKey: Keys.chatSessionId) }
         set { defaults.set(newValue, forKey: Keys.chatSessionId) }
@@ -103,5 +109,23 @@ final class AppPreferences {
     var actionSessionId: String? {
         get { defaults.string(forKey: Keys.actionSessionId) }
         set { defaults.set(newValue, forKey: Keys.actionSessionId) }
+    }
+
+    func clearSessionScopedState() {
+        defaults.removeObject(forKey: Keys.chatSessionId)
+        defaults.removeObject(forKey: Keys.actionSessionId)
+        defaults.removeObject(forKey: Keys.completedActionIDs)
+        defaults.removeObject(forKey: Keys.completedActionIDsDate)
+        defaults.removeObject(forKey: Keys.lastCompletedActionsDate)
+    }
+
+    func clearUserScopedState() {
+        clearSessionScopedState()
+        defaults.removeObject(forKey: Keys.hasCompletedOnboarding)
+        defaults.removeObject(forKey: Keys.selectedGoalIDs)
+        defaults.removeObject(forKey: Keys.cachedUserName)
+        defaults.removeObject(forKey: Keys.userEmail)
+        defaults.removeObject(forKey: Keys.currentUserId)
+        defaults.removeObject(forKey: Keys.streakDays)
     }
 }

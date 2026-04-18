@@ -22,4 +22,19 @@ enum GoalMapping {
         let mapped = goalIds.compactMap { mapToBackend($0) }
         return Array(Set(mapped))
     }
+
+    /// Best-effort reverse mapping from backend goals to onboarding goal ids.
+    static func mapFromBackend(_ backendGoal: String) -> String? {
+        switch backendGoal {
+        case "sleep": return "sleep"
+        case "steps": return "steps"
+        case "energy": return "energy"
+        default: return nil
+        }
+    }
+
+    static func mapFromBackendGoals(_ backendGoals: [String]) -> [String] {
+        let mapped = backendGoals.compactMap { mapFromBackend($0) }
+        return Array(Set(mapped))
+    }
 }
