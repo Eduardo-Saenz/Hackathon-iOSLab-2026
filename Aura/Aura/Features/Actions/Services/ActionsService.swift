@@ -7,6 +7,9 @@ protocol ActionsServiceProtocol {
         healthSnapshot: HealthDataSnapshot,
         streakDays: Int?
     ) async throws -> GenerateActionsResponse
+    func getActionsToday() async throws -> GetActionsTodayResponse
+    func completeAction(sessionId: String, actionId: String) async throws -> MicroactionWithStatus
+    func skipAction(sessionId: String, actionId: String) async throws -> MicroactionWithStatus
 }
 
 struct ActionsAPIService: ActionsServiceProtocol {
@@ -36,6 +39,18 @@ struct ActionsAPIService: ActionsServiceProtocol {
         let body = try JSONEncoder().encode(request)
         return try await apiClient.send(.generateActions(body: body))
     }
+
+    func getActionsToday() async throws -> GetActionsTodayResponse {
+        try await apiClient.send(.actionsToday)
+    }
+
+    func completeAction(sessionId: String, actionId: String) async throws -> MicroactionWithStatus {
+        try await apiClient.send(.completeAction(sessionId: sessionId, actionId: actionId))
+    }
+
+    func skipAction(sessionId: String, actionId: String) async throws -> MicroactionWithStatus {
+        try await apiClient.send(.skipAction(sessionId: sessionId, actionId: actionId))
+    }
 }
 
 struct MockActionsService: ActionsServiceProtocol {
@@ -57,5 +72,23 @@ struct MockActionsService: ActionsServiceProtocol {
         streakDays: Int?
     ) async throws -> GenerateActionsResponse {
         response
+    }
+
+    func getActionsToday() async throws -> GetActionsTodayResponse {
+        GetActionsTodayResponse(
+            date: ISO8601DateFormatter().string(from: Date()),
+            sessionId: "mock-session",
+            microactions: [],
+            motivationMessage: response.motivationMessage,
+            focusArea: response.focusArea
+        )
+    }
+
+    func completeAction(sessionId: String, actionId: String) async throws -> MicroactionWithStatus {
+        MicroactionWithStatus(id: actionId, title: "Completada", description: "", justification: "", category: "energy", difficulty: "easy", estimatedMinutes: 5, scheduleHint: nil, status: .completed, completedAt: ISO8601DateFormatter().string(from: Date()), skippedAt: nil)
+    }
+
+    func skipAction(sessionId: String, actionId: String) async throws -> MicroactionWithStatus {
+        MicroactionWithStatus(id: actionId, title: "Omitida", description: "", justification: "", category: "energy", difficulty: "easy", estimatedMinutes: 5, scheduleHint: nil, status: .skipped, completedAt: nil, skippedAt: ISO8601DateFormatter().string(from: Date()))
     }
 }

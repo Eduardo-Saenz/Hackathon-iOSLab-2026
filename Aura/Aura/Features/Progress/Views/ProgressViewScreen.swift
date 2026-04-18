@@ -25,21 +25,33 @@ struct ProgressViewScreen: View {
     @State private var selectedTertiary: String? = nil
     @State private var revealedEmotionLevel: Int = 1
     @State private var sentEmotionMessage: String? = nil
+    @State private var hasLoadedSemana = false
 
     private let bienestarColor = Color(hex: "#5FD1B8")
     private let medioColor = Color(hex: "#FFBE5C")
     private let altoColor = Color(hex: "#FF7B7B")
 
     private var weeklyData: [ChartDataPoint] {
-        [
-            ChartDataPoint(day: "L", fill: 0.5, dot: medioColor),
-            ChartDataPoint(day: "M", fill: 0.4, dot: medioColor),
-            ChartDataPoint(day: "X", fill: 0.7, dot: bienestarColor),
-            ChartDataPoint(day: "J", fill: 0.35, dot: altoColor),
-            ChartDataPoint(day: "V", fill: 0.65, dot: medioColor),
-            ChartDataPoint(day: "S", fill: 0.85, dot: bienestarColor),
-            ChartDataPoint(day: "D", fill: 0.4, dot: altoColor)
-        ]
+        if viewModel.moodChartData.isEmpty {
+            return [
+                ChartDataPoint(day: "L", fill: 0.5, dot: medioColor),
+                ChartDataPoint(day: "M", fill: 0.4, dot: medioColor),
+                ChartDataPoint(day: "X", fill: 0.7, dot: bienestarColor),
+                ChartDataPoint(day: "J", fill: 0.35, dot: altoColor),
+                ChartDataPoint(day: "V", fill: 0.65, dot: medioColor),
+                ChartDataPoint(day: "S", fill: 0.85, dot: bienestarColor),
+                ChartDataPoint(day: "D", fill: 0.4, dot: altoColor)
+            ]
+        }
+        return viewModel.moodChartData.map { item in
+            let dotColor: Color
+            switch item.level {
+            case 0: dotColor = bienestarColor
+            case 1: dotColor = medioColor
+            default: dotColor = altoColor
+            }
+            return ChartDataPoint(day: item.label, fill: item.value, dot: dotColor)
+        }
     }
 
     private let emotionBranches: [EmotionBranch] = [
@@ -151,6 +163,39 @@ struct ProgressViewScreen: View {
         selectedPrimaryBranch != nil
     }
 
+    private var coachNarrativeTitle: String {
+        if viewModel.isLoading && !hasLoadedSemana {
+            return "Preparando tu resumen semanal"
+        }
+        if let focus = localizedFocusArea, !focus.isEmpty {
+            return "Esta semana tu enfoque fue \(focus.lowercased())"
+        }
+        return "Esta semana tu mente trabajó duro"
+    }
+
+    private var coachNarrativeBody: String {
+        if let summary = viewModel.healthSummary?.summary, !summary.isEmpty {
+            return summary
+        }
+        if !viewModel.coachInsight.isEmpty {
+            return viewModel.coachInsight
+        }
+        return "Sigue registrando emociones y actividad para que Aura pueda generar un resumen más preciso."
+    }
+
+    private var localizedFocusArea: String? {
+        switch viewModel.coachFocusArea.lowercased() {
+        case "sleep": return "Sueño"
+        case "steps": return "Movimiento"
+        case "energy": return "Energía"
+        case "weight": return "Balance"
+        case "mindfulness": return "Calma mental"
+        case "mindset": return "Mentalidad"
+        case "": return nil
+        default: return viewModel.coachFocusArea.capitalized
+        }
+    }
+
     private var currentEmotionPayload: String {
         var parts: [String] = []
         if let primary = selectedPrimaryBranch?.primary { parts.append(primary) }
@@ -238,6 +283,10 @@ struct ProgressViewScreen: View {
         }
         .background(AuraColors.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: selectedTab) {
+            guard selectedTab == "Semana" else { return }
+            await loadSemanaIfNeeded(force: !hasLoadedSemana)
+        }
         .onAppear {
             if selectedTab == "Semana" {
                 animateBars = true
@@ -246,7 +295,8 @@ struct ProgressViewScreen: View {
                 resetEmotionMap(animated: false)
             }
         }
-        .onChange(of: selectedTab) { newValue in
+        .onChange(of: selectedTab) {
+            let newValue = selectedTab
             if newValue == "Semana" {
                 withAnimation { animateBars = true }
             } else {
@@ -257,6 +307,12 @@ struct ProgressViewScreen: View {
                 resetEmotionMap(animated: true)
             }
         }
+    }
+
+    private func loadSemanaIfNeeded(force: Bool) async {
+        guard force || !hasLoadedSemana else { return }
+        await viewModel.loadSemanaData()
+        hasLoadedSemana = true
     }
 
     @ViewBuilder
@@ -303,6 +359,20 @@ struct ProgressViewScreen: View {
             aiCoachSection
             moodChartSection
             summaryCardsSection
+            if let errorMessage = viewModel.errorMessage, !errorMessage.isEmpty {
+                weekStateCard(
+                    title: "Resumen incompleto",
+                    message: errorMessage,
+                    tint: altoColor
+                )
+            }
+            if viewModel.hasInsufficientData {
+                weekStateCard(
+                    title: "Datos insuficientes",
+                    message: "Necesitamos al menos 4 días de registros para generar un resumen semanal fiable.",
+                    tint: medioColor
+                )
+            }
         }
     }
 
@@ -480,7 +550,14 @@ struct ProgressViewScreen: View {
                     )
 
                     Button {
-                        sentEmotionMessage = currentEmotionPayload
+                        Task {
+                            guard let primaryIdx = selectedPrimaryIndex else { return }
+                            let branch = emotionBranches[primaryIdx]
+                            let family = EmotionMapping.familyForWheelPrimary(branch.primary)
+                            let label = selectedTertiary ?? selectedSecondary ?? branch.primary
+                            await viewModel.submitEmotion(family: family, label: label, intensity: 5)
+                            sentEmotionMessage = viewModel.compassionateResponse ?? "Emoción registrada"
+                        }
                     } label: {
                         HStack {
                             Image(systemName: "paperplane.fill")
@@ -497,10 +574,11 @@ struct ProgressViewScreen: View {
                     .disabled(!canSendEmotion)
 
                     if let sentEmotionMessage {
-                        Text("Enviado: \(sentEmotionMessage)")
+                        Text(sentEmotionMessage)
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundStyle(AuraColors.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .transition(.opacity)
                     }
                 }
             }
@@ -763,22 +841,30 @@ struct ProgressViewScreen: View {
                     .tracking(1)
             }
 
-            Text("Esta semana tu mente trabajó duro")
+            Text(coachNarrativeTitle)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(AuraColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("Notamos un patrón: los días con menos de 6.5h de sueño correlacionan con niveles de estrés más altos y menor bienestar emocional. Priorizar el sueño esta semana puede marcar una diferencia significativa.")
-                .font(AuraTypography.body)
-                .foregroundStyle(AuraColors.textSecondary)
-                .lineSpacing(4)
+            if viewModel.isLoading && !hasLoadedSemana {
+                VStack(alignment: .leading, spacing: AuraSpacing.small) {
+                    ShimmerPlaceholder(height: 16, cornerRadius: 8)
+                    ShimmerPlaceholder(height: 16, cornerRadius: 8)
+                    ShimmerPlaceholder(height: 16, cornerRadius: 8)
+                }
+            } else {
+                Text(coachNarrativeBody)
+                    .font(AuraTypography.body)
+                    .foregroundStyle(AuraColors.textSecondary)
+                    .lineSpacing(4)
+            }
 
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "target")
                     .foregroundStyle(altoColor)
                     .font(.system(size: 16, weight: .bold))
                     .padding(.top, 2)
-                Text("Enfoque: Sueño como base del bienestar mental")
+                Text("Enfoque: \(localizedFocusArea ?? "Bienestar general")")
                     .font(AuraTypography.footnote)
                     .foregroundStyle(AuraColors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -786,6 +872,22 @@ struct ProgressViewScreen: View {
             .padding(AuraSpacing.medium)
             .background(Color.white.opacity(0.6))
             .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+
+            if let insights = viewModel.healthSummary?.insights, !insights.isEmpty {
+                VStack(alignment: .leading, spacing: AuraSpacing.small) {
+                    ForEach(Array(insights.prefix(2)), id: \.self) { insight in
+                        HStack(alignment: .top, spacing: AuraSpacing.small) {
+                            Circle()
+                                .fill(AuraColors.primary)
+                                .frame(width: 6, height: 6)
+                                .padding(.top, 6)
+                            Text(insight)
+                                .font(AuraTypography.footnote)
+                                .foregroundStyle(AuraColors.textSecondary)
+                        }
+                    }
+                }
+            }
         }
         .padding(AuraSpacing.large)
         .background(
@@ -850,32 +952,86 @@ struct ProgressViewScreen: View {
 
     @ViewBuilder
     private var summaryCardsSection: some View {
-        HStack(spacing: AuraSpacing.small) {
-            summaryCard(
-                icon: "face.smiling",
-                iconColor: .green,
-                value: "5.7",
-                max: "/ 10",
-                subtitle: "HUMOR PROM.",
-                backgroundColor: Color(hex: "#E8FBF2")
-            )
-            summaryCard(
-                icon: "moon.zzz.fill",
-                iconColor: .blue,
-                value: "7.0",
-                max: "h",
-                subtitle: "SUEÑO PROM.",
-                backgroundColor: Color(hex: "#EAF2FF")
-            )
-            summaryCard(
-                icon: "flame.fill",
-                iconColor: altoColor,
-                value: "4.9",
-                max: "/ 10",
-                subtitle: "ESTRÉS PROM.",
-                backgroundColor: Color(hex: "#FFF2EC")
-            )
+        VStack(alignment: .leading, spacing: AuraSpacing.medium) {
+            HStack(spacing: AuraSpacing.small) {
+                summaryCard(
+                    icon: "face.smiling",
+                    iconColor: .green,
+                    value: viewModel.averageMoodScore,
+                    max: "/ 10",
+                    subtitle: "HUMOR PROM.",
+                    backgroundColor: Color(hex: "#E8FBF2")
+                )
+                summaryCard(
+                    icon: "moon.zzz.fill",
+                    iconColor: .blue,
+                    value: viewModel.averageSleep.replacingOccurrences(of: "h", with: ""),
+                    max: "h",
+                    subtitle: "SUEÑO PROM.",
+                    backgroundColor: Color(hex: "#EAF2FF")
+                )
+                summaryCard(
+                    icon: "flame.fill",
+                    iconColor: altoColor,
+                    value: viewModel.averageStressScore,
+                    max: "/ 10",
+                    subtitle: "ESTRÉS PROM.",
+                    backgroundColor: Color(hex: "#FFF2EC")
+                )
+            }
+
+            if !viewModel.achievements.isEmpty {
+                VStack(alignment: .leading, spacing: AuraSpacing.small) {
+                    Text("LOGROS DE LA SEMANA")
+                        .font(AuraTypography.mini)
+                        .foregroundStyle(AuraColors.textSecondary)
+                        .tracking(1)
+
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AuraSpacing.small) {
+                        ForEach(viewModel.achievements, id: \.self) { achievement in
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(AuraColors.primary)
+                                Text(achievement)
+                                    .font(AuraTypography.footnote)
+                                    .foregroundStyle(AuraColors.textPrimary)
+                                    .lineLimit(2)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .background(AuraColors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    private func weekStateCard(title: String, message: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: AuraSpacing.small) {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(tint)
+                Text(title)
+                    .font(AuraTypography.bodyStrong)
+                    .foregroundStyle(AuraColors.textPrimary)
+            }
+
+            Text(message)
+                .font(AuraTypography.footnote)
+                .foregroundStyle(AuraColors.textSecondary)
+                .lineSpacing(3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AuraSpacing.medium)
+        .background(AuraColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AuraCorners.medium)
+                .stroke(tint.opacity(0.25), lineWidth: 1)
+        )
     }
 
     private func legendItem(color: Color, text: String) -> some View {
@@ -1140,6 +1296,6 @@ extension Collection {
 
 #Preview {
     NavigationStack {
-        ProgressViewScreen()
+        ProgressViewScreen(viewModel: PreviewMocks.progressViewModel())
     }
 }

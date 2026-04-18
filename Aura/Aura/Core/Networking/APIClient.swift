@@ -2,6 +2,7 @@ import Foundation
 
 protocol APIClientProtocol {
     func send<T: Decodable>(_ endpoint: Endpoint) async throws -> T
+    func sendVoid(_ endpoint: Endpoint) async throws
 }
 
 struct APIClient: APIClientProtocol {
@@ -90,6 +91,62 @@ struct APIClient: APIClientProtocol {
             print("❌ API Decoding Body -> \(responseBody ?? "<empty>")")
             #endif
             throw APIError.decodingFailed(reason: error.localizedDescription, responseBody: responseBody)
+        }
+    }
+
+    /// Sends a request expecting no response body (e.g. 204 No Content).
+    func sendVoid(_ endpoint: Endpoint) async throws {
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidURL
+        }
+
+        let normalizedPath = endpoint.path.hasPrefix("/") ? endpoint.path : "/" + endpoint.path
+        components.path = normalizedPath
+        components.queryItems = endpoint.queryItems.isEmpty ? nil : endpoint.queryItems
+
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = endpoint.method.rawValue
+        request.httpBody = endpoint.body
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if endpoint.body != nil {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+
+        if let token = TokenManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        endpoint.headers.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+
+        #if DEBUG
+        print("🌐 API Void Request -> \(request.httpMethod ?? "N/A") \(url.absoluteString)")
+        #endif
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.transportError(error.localizedDescription)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        #if DEBUG
+        print("📡 API Void Response Status -> \(httpResponse.statusCode)")
+        #endif
+
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
+            let responseBody = String(data: data, encoding: .utf8)
+            throw APIError.serverError(statusCode: httpResponse.statusCode, responseBody: responseBody)
         }
     }
 }

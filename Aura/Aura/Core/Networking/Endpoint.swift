@@ -35,4 +35,65 @@ extension Endpoint {
             body: body
         )
     }
+
+    // MARK: - Actions
+
+    static let actionsToday = Endpoint(path: "/actions/today", method: .get)
+
+    static func completeAction(sessionId: String, actionId: String) -> Endpoint {
+        Endpoint(path: "/actions/\(sessionId)/microactions/\(actionId)/complete", method: .patch)
+    }
+
+    static func skipAction(sessionId: String, actionId: String) -> Endpoint {
+        Endpoint(path: "/actions/\(sessionId)/microactions/\(actionId)/skip", method: .patch)
+    }
+
+    // MARK: - User
+
+    static let usersMe = Endpoint(path: "/users/me", method: .get)
+
+    static func patchUsersMe(body: Data) -> Endpoint {
+        Endpoint(path: "/users/me", method: .patch, body: body)
+    }
+
+    static let userStreak = Endpoint(path: "/users/me/streak", method: .get)
+
+    // MARK: - Daily Brief
+
+    static let dailyBrief = Endpoint(path: "/daily-brief", method: .get)
+
+    static func healthSummary(body: Data) -> Endpoint {
+        Endpoint(path: "/health-summary", method: .post, body: body)
+    }
+
+    // MARK: - Emotions
+
+    static func emotionCheckin(body: Data) -> Endpoint {
+        Endpoint(path: "/emotions/checkin", method: .post, body: body)
+    }
+
+    static func emotionHistory(limit: Int = 20, offset: Int = 0) -> Endpoint {
+        Endpoint(
+            path: "/emotions/history",
+            method: .get,
+            queryItems: [
+                URLQueryItem(name: "limit", value: "\(limit)"),
+                URLQueryItem(name: "offset", value: "\(offset)")
+            ]
+        )
+    }
+
+    // MARK: - Chat Sessions
+
+    static let chatSessions = Endpoint(path: "/chat/sessions", method: .get)
+
+    static func chatSessionMessages(sessionId: String) -> Endpoint {
+        Endpoint(path: "/chat/sessions/\(sessionId)/messages", method: .get)
+    }
+
+    // MARK: - Auth
+
+    static func deleteSession(body: Data) -> Endpoint {
+        Endpoint(path: "/auth/session", method: .delete, body: body)
+    }
 }

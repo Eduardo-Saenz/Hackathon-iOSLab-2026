@@ -28,6 +28,7 @@ final class CoachViewModel: ObservableObject {
     @Published var lastResponseGrounded: Bool?
     @Published var lastResponseDisclaimer: String?
     @Published var usedBackendInLastResponse = false
+    @Published var sessionId: String?
 
     private let coachService: CoachServiceProtocol
     private let healthDataProvider: HealthDataProviding
@@ -50,6 +51,7 @@ final class CoachViewModel: ObservableObject {
             self.appPreferences = .shared
             self.isRuntimeService = true
         }
+        self.sessionId = appPreferences.chatSessionId
     }
 
     init(
@@ -93,11 +95,15 @@ final class CoachViewModel: ObservableObject {
         let healthContext = await buildHealthContext()
 
         do {
-            let response = try await coachService.sendChat(messages: payloadMessages, healthContext: healthContext)
+            let response = try await coachService.sendChat(messages: payloadMessages, healthContext: healthContext, sessionId: sessionId)
             appendMessage(response.message, isFromUser: false)
             lastResponseGrounded = response.grounded
             lastResponseDisclaimer = response.disclaimer
             usedBackendInLastResponse = isRuntimeService
+            if let newSessionId = response.sessionId {
+                sessionId = newSessionId
+                appPreferences.chatSessionId = newSessionId
+            }
         } catch {
             errorMessage = error.localizedDescription
             lastFailedUserMessage = text
@@ -138,18 +144,11 @@ final class CoachViewModel: ObservableObject {
     }
 
     private func resolvedGoals() -> [String] {
-        let allowedGoals = Set(["sleep", "steps", "energy", "weight"])
-        let persisted = appPreferences.selectedGoalIDs.filter { allowedGoals.contains($0) }
-
+        let persisted = appPreferences.selectedGoalIDs
         if !persisted.isEmpty {
-            return Array(persisted.prefix(4))
+            return GoalMapping.mapGoals(Array(persisted.prefix(4)))
         }
-
-        return WellnessGoal.predefined
-            .map(\.id)
-            .filter { allowedGoals.contains($0) }
-            .prefix(3)
-            .map { $0 }
+        return GoalMapping.mapGoals(WellnessGoal.predefined.prefix(3).map(\.id))
     }
 }
 

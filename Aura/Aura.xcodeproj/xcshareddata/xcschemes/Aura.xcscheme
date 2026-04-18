@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "2640"
-   version = "1.8">
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
@@ -59,7 +59,7 @@
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "API_BASE_URL"
-            value = "https://typical-nonindividual-monet.ngrok-free.dev"
+            value = "https://cfb6-2806-2a0-1422-434c-5ce0-5bd7-882a-8082.ngrok-free.app"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

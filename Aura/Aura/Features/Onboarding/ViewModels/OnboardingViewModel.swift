@@ -5,12 +5,25 @@ import Combine
 final class OnboardingViewModel: ObservableObject {
     @Published private(set) var availableGoals: [WellnessGoal] = WellnessGoal.predefined
     @Published private(set) var selectedGoalIDs: Set<String>
+    @Published var isSyncing = false
 
     private let appPreferences: AppPreferences
+    private let userService: UserServiceProtocol
 
     init(appPreferences: AppPreferences) {
         self.appPreferences = appPreferences
         self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
+        if Self.isRunningInPreview {
+            self.userService = MockUserService()
+        } else {
+            self.userService = UserAPIService(apiClient: APIClient())
+        }
+    }
+
+    init(appPreferences: AppPreferences, userService: UserServiceProtocol) {
+        self.appPreferences = appPreferences
+        self.selectedGoalIDs = Set(appPreferences.selectedGoalIDs)
+        self.userService = userService
     }
 
     var canContinue: Bool {
@@ -27,8 +40,42 @@ final class OnboardingViewModel: ObservableObject {
         selectedGoalIDs.insert(goalID)
     }
 
-    func completeOnboarding() {
+    /// Saves locally and syncs profile to backend.
+    func completeOnboarding(name: String?, preferredTone: String?) async {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        // Save locally first
         appPreferences.selectedGoalIDs = Array(selectedGoalIDs)
         appPreferences.hasCompletedOnboarding = true
+        if let name, !name.isEmpty {
+            appPreferences.cachedUserName = name
+        }
+
+        // Sync to backend (best-effort)
+        let mappedGoals = GoalMapping.mapGoals(Array(selectedGoalIDs))
+        let body = PatchUserBody(
+            name: name,
+            email: nil,
+            timezone: TimeZone.current.identifier,
+            preferredTone: preferredTone,
+            goals: mappedGoals,
+            onboardingCompleted: true
+        )
+
+        do {
+            _ = try await userService.patchMe(body)
+            #if DEBUG
+            print("🎓 Onboarding PATCH /users/me OK")
+            #endif
+        } catch {
+            #if DEBUG
+            print("🎓 Onboarding PATCH /users/me failed: \(error.localizedDescription)")
+            #endif
+        }
+    }
+
+    private static var isRunningInPreview: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
 }

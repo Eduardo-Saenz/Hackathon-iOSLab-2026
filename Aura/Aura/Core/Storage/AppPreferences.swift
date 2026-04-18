@@ -14,6 +14,9 @@ final class AppPreferences {
         static let completedActionIDs = "progress.completedActionIDs"
         static let completedActionIDsDate = "progress.completedActionIDsDate"
         static let userEmail = "auth.userEmail"
+        static let chatSessionId = "chat.sessionId"
+        static let cachedUserName = "user.cachedName"
+        static let actionSessionId = "actions.sessionId"
     }
 
     // MARK: - Shared
@@ -85,5 +88,20 @@ final class AppPreferences {
     var userEmail: String? {
         get { defaults.string(forKey: Keys.userEmail) }
         set { defaults.set(newValue, forKey: Keys.userEmail) }
+    }
+
+    var chatSessionId: String? {
+        get { defaults.string(forKey: Keys.chatSessionId) }
+        set { defaults.set(newValue, forKey: Keys.chatSessionId) }
+    }
+
+    var cachedUserName: String? {
+        get { defaults.string(forKey: Keys.cachedUserName) }
+        set { defaults.set(newValue, forKey: Keys.cachedUserName) }
+    }
+
+    var actionSessionId: String? {
+        get { defaults.string(forKey: Keys.actionSessionId) }
+        set { defaults.set(newValue, forKey: Keys.actionSessionId) }
     }
 }

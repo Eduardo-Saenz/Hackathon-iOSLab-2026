@@ -3,7 +3,8 @@ import Foundation
 protocol CoachServiceProtocol {
     func sendChat(
         messages: [ChatMessagePayload],
-        healthContext: ChatHealthContextPayload?
+        healthContext: ChatHealthContextPayload?,
+        sessionId: String?
     ) async throws -> ChatResponse
 }
 
@@ -16,9 +17,10 @@ struct CoachAPIService: CoachServiceProtocol {
 
     func sendChat(
         messages: [ChatMessagePayload],
-        healthContext: ChatHealthContextPayload?
+        healthContext: ChatHealthContextPayload?,
+        sessionId: String?
     ) async throws -> ChatResponse {
-        let request = ChatRequest(messages: messages, healthContext: healthContext)
+        let request = ChatRequest(messages: messages, healthContext: healthContext, sessionId: sessionId)
         let body = try JSONEncoder().encode(request)
         return try await apiClient.send(.chat(body: body))
     }
@@ -27,13 +29,15 @@ struct CoachAPIService: CoachServiceProtocol {
 struct MockCoachService: CoachServiceProtocol {
     func sendChat(
         messages: [ChatMessagePayload],
-        healthContext: ChatHealthContextPayload?
+        healthContext: ChatHealthContextPayload?,
+        sessionId: String?
     ) async throws -> ChatResponse {
         let userMessage = messages.last(where: { $0.role == .user })?.content ?? "Cuéntame cómo te sientes hoy."
         return ChatResponse(
             message: "Gracias por compartir: \"\(userMessage)\". Vamos a convertirlo en una acción concreta y sencilla para hoy.",
             grounded: true,
-            disclaimer: "Respuesta generada en modo mock."
+            disclaimer: "Respuesta generada en modo mock.",
+            sessionId: sessionId ?? UUID().uuidString
         )
     }
 }

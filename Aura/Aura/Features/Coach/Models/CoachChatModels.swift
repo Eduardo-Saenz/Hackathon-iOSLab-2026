@@ -3,10 +3,12 @@ import Foundation
 struct ChatRequest: Codable {
     let messages: [ChatMessagePayload]
     let healthContext: ChatHealthContextPayload?
+    let sessionId: String?
 
     enum CodingKeys: String, CodingKey {
         case messages
         case healthContext = "health_context"
+        case sessionId = "session_id"
     }
 }
 
@@ -34,4 +36,5 @@ struct ChatResponse: Codable {
     let message: String
     let grounded: Bool
     let disclaimer: String
+    let sessionId: String?
 }

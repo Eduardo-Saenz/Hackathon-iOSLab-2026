@@ -2,6 +2,7 @@ import SwiftUI
 
 @MainActor
 struct GoalSelectionView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var viewModel: OnboardingViewModel
     let onContinue: () -> Void
 
@@ -11,6 +12,7 @@ struct GoalSelectionView: View {
     @State private var firstName: String = ""
     @State private var lastName: String = ""
     @State private var age: String = ""
+    @State private var selectionGlowActive = false
 
     private let maxGoals = 3
 
@@ -60,31 +62,37 @@ struct GoalSelectionView: View {
                 Spacer(minLength: 0)
 
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        if currentStep < 3 {
+                    if currentStep < 3 {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             currentStep += 1
-                        } else {
-                            // Aquí puedes guardar firstName, lastName, age y selectedTone
-                            // en tu viewModel o preferences si quieres
-                            viewModel.completeOnboarding()
-                            onContinue()
+                        }
+                    } else {
+                        Task {
+                            await submitOnboarding()
                         }
                     }
                 } label: {
-                    Text(currentStep < 3 ? "Siguiente" : "Continuar")
-                        .font(AuraTypography.bodyStrong)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, AuraSpacing.medium)
-                        .background(primaryButtonEnabled ? AuraColors.primary : AuraColors.textTertiary)
-                        .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
-                        .shadow(
-                            color: primaryButtonEnabled ? AuraColors.primary.opacity(0.3) : Color.clear,
-                            radius: 8,
-                            y: 4
-                        )
+                    HStack(spacing: AuraSpacing.small) {
+                        if viewModel.isSyncing {
+                            ProgressView()
+                                .tint(.white)
+                        }
+
+                        Text(primaryButtonTitle)
+                            .font(AuraTypography.bodyStrong)
+                            .foregroundStyle(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AuraSpacing.medium)
+                    .background(primaryButtonEnabled ? AuraColors.primary : AuraColors.textTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
+                    .shadow(
+                        color: primaryButtonEnabled ? AuraColors.primary.opacity(0.3) : Color.clear,
+                        radius: 8,
+                        y: 4
+                    )
                 }
-                .disabled(!primaryButtonEnabled)
+                .disabled(!primaryButtonEnabled || viewModel.isSyncing)
             }
             .padding(.horizontal, AuraSpacing.large)
             .padding(.vertical, AuraSpacing.xLarge)
@@ -93,6 +101,10 @@ struct GoalSelectionView: View {
             .animation(.spring(response: 0.35, dampingFraction: 0.86), value: currentStep)
             .animation(.spring(response: 0.35, dampingFraction: 0.86), value: viewModel.selectedGoalIDs)
             .animation(.spring(response: 0.35, dampingFraction: 0.86), value: selectedTone)
+            .task {
+                guard !reduceMotion else { return }
+                selectionGlowActive = true
+            }
         }
     }
 
@@ -180,8 +192,8 @@ struct GoalSelectionView: View {
                 .background(AuraColors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: AuraCorners.medium))
                 .shadow(color: AuraColors.shadowCool.opacity(0.6), radius: 8, y: 3)
-                .onChange(of: age) { newValue in
-                    age = newValue.filter { $0.isNumber }
+                .onChange(of: age) {
+                    age = age.filter { $0.isNumber }
                 }
         }
     }
@@ -255,14 +267,32 @@ struct GoalSelectionView: View {
             .frame(height: 112)
             .background(isSelected ? AuraColors.successSoft : AuraColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: AuraCorners.large))
-            .shadow(color: isSelected ? Color.clear : AuraColors.shadowCool, radius: 8, y: 3)
-            .overlay(
-                RoundedRectangle(cornerRadius: AuraCorners.large)
-                    .stroke(isSelected ? AuraColors.primary.opacity(0.4) : Color.clear, lineWidth: 2)
+            .shadow(
+                color: isSelected
+                    ? AuraColors.primary.opacity(selectionGlowActive && !reduceMotion ? 0.22 : 0.12)
+                    : AuraColors.shadowCool,
+                radius: isSelected && selectionGlowActive && !reduceMotion ? 16 : 8,
+                y: isSelected ? 6 : 3
             )
-            .scaleEffect(shouldPushBack ? 0.92 : 1.0)
+            .overlay(
+                ZStack {
+                    RoundedRectangle(cornerRadius: AuraCorners.large)
+                        .stroke(isSelected ? AuraColors.primary.opacity(0.42) : Color.clear, lineWidth: 2)
+
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: AuraCorners.large)
+                            .stroke(AuraColors.primary.opacity(selectionGlowActive && !reduceMotion ? 0.18 : 0.06), lineWidth: 8)
+                            .blur(radius: 10)
+                    }
+                }
+            )
+            .scaleEffect(shouldPushBack ? 0.92 : (isSelected && selectionGlowActive && !reduceMotion ? 1.02 : 1.0))
             .offset(y: shouldPushBack ? 6 : 0)
             .opacity(shouldPushBack ? 0.65 : 1.0)
+            .animation(
+                reduceMotion ? .default : AuraAnimations.glowPulse.repeatForever(autoreverses: true),
+                value: selectionGlowActive
+            )
         }
         .buttonStyle(.plain)
         .disabled(limitReached && !isSelected)
@@ -331,6 +361,13 @@ struct GoalSelectionView: View {
 
     // MARK: - State
 
+    private var primaryButtonTitle: String {
+        if viewModel.isSyncing {
+            return "Guardando..."
+        }
+        return currentStep < 3 ? "Siguiente" : "Continuar"
+    }
+
     private var primaryButtonEnabled: Bool {
         switch currentStep {
         case 1:
@@ -345,6 +382,21 @@ struct GoalSelectionView: View {
             return false
         }
     }
+
+    private var resolvedFullName: String {
+        [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private func submitOnboarding() async {
+        await viewModel.completeOnboarding(
+            name: resolvedFullName.isEmpty ? nil : resolvedFullName,
+            preferredTone: selectedTone?.apiValue
+        )
+        onContinue()
+    }
 }
 
 // MARK: - Tone Option
@@ -355,6 +407,17 @@ private enum ToneOption: String, CaseIterable {
     case normal = "Normal"
 
     var title: String { rawValue }
+
+    var apiValue: String {
+        switch self {
+        case .calmado:
+            return "calm"
+        case .motivacional:
+            return "motivational"
+        case .normal:
+            return "neutral"
+        }
+    }
 
     var subtitle: String {
         switch self {
@@ -369,5 +432,5 @@ private enum ToneOption: String, CaseIterable {
 }
 
 #Preview {
-    GoalSelectionView()
+    GoalSelectionView(viewModel: PreviewMocks.onboardingViewModel())
 }

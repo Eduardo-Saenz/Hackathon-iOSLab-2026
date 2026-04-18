@@ -6,6 +6,7 @@ struct CoachView: View {
     private let entryMessage: String?
 
     @State private var didApplyEntryMessage = false
+    @State private var sendButtonScale: CGFloat = 1.0
 
     init() {
         self.entryMessage = nil
@@ -41,16 +42,24 @@ struct CoachView: View {
                     if viewModel.messages.isEmpty {
                         emptyState
                     } else {
-                        ForEach(viewModel.messages) { message in
+                        ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                             messageRow(message)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
                         }
                     }
 
                     if viewModel.isLoading {
-                        ProgressView("Coach escribiendo...")
-                            .font(AuraTypography.footnote)
-                            .foregroundStyle(AuraColors.textSecondary)
-                            .padding(.top, AuraSpacing.small)
+                        HStack(spacing: AuraSpacing.small) {
+                            TypingDotsView()
+                            Text("Coach escribiendo...")
+                                .font(AuraTypography.footnote)
+                                .foregroundStyle(AuraColors.textSecondary)
+                        }
+                        .padding(.top, AuraSpacing.small)
+                        .transition(.opacity)
                     }
 
                     if let errorMessage = viewModel.errorMessage {
@@ -65,7 +74,13 @@ struct CoachView: View {
                 }
                 .padding(.vertical, AuraSpacing.medium)
             }
-            .background(AuraColors.surface)
+            .background(
+                ZStack {
+                    AuraColors.surface
+                    FloatingOrbsView()
+                        .opacity(0.3)
+                }
+            )
 
             VStack(spacing: AuraSpacing.medium) {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -103,6 +118,14 @@ struct CoachView: View {
                         .lineLimit(1...4)
 
                     Button {
+                        withAnimation(.spring(response: 0.15, dampingFraction: 0.5)) {
+                            sendButtonScale = 0.88
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                                sendButtonScale = 1.0
+                            }
+                        }
                         viewModel.sendDraft()
                     } label: {
                         Image(systemName: "paperplane.fill")
@@ -115,6 +138,7 @@ struct CoachView: View {
                                 : AuraColors.textSecondary.opacity(0.35)
                             )
                             .clipShape(Circle())
+                            .scaleEffect(sendButtonScale)
                     }
                     .buttonStyle(.plain)
                     .disabled(!canSendDraft || viewModel.isLoading)
@@ -304,6 +328,6 @@ struct CoachView: View {
 
 #Preview {
     NavigationStack {
-        CoachView(entryMessage: "Esto es para mi diario")
+        CoachView(viewModel: PreviewMocks.coachViewModel(), entryMessage: "Esto es para mi diario")
     }
 }

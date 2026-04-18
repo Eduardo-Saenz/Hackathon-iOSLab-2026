@@ -78,9 +78,12 @@ final class AuthService {
 
     func signOut() async {
         if let refreshToken = tokenManager.refreshToken {
-            // Best-effort revoke on server
-            let body = ["refreshToken": refreshToken]
-            let _: EmptyResponse? = try? await delete(path: "/auth/session", body: body)
+            // Best-effort revoke — server returns 204 No Content
+            var request = URLRequest(url: baseURL.appendingPathComponent("/auth/session"))
+            request.httpMethod = "DELETE"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["refreshToken": refreshToken])
+            _ = try? await session.data(for: request)
         }
         tokenManager.clearAll()
     }
